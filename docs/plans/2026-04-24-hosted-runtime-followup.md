@@ -66,20 +66,19 @@ Implication:
   - `yarn build-hosted-db`
   - `yarn start-hosted-db`
 
-### 2. The Dockerfile still points at the production script contract
+### 2. The Dockerfile is now aligned to the self-hosted runtime contract
 
-[`Dockerfile`](/Users/rgrp/src/ForumMagnum/Dockerfile) now uses Node `24.13.0`, which matches the repo requirement, but its runtime command still needs to be moved off the legacy credentials path.
+[`Dockerfile`](/Users/rgrp/src/ForumMagnum/Dockerfile) now:
 
-The repo now has explicit self-hosted commands:
+- uses Node `24.13.0`
+- builds with `yarn build-hosted-db`
+- starts with `yarn start-hosted-db`
 
-- `yarn build-hosted-db`
-- `yarn start-hosted-db`
-
-That gives us the replacement contract, but the image should be updated to use it.
+This works for Railway because service variables are available during both the build process and at runtime.
 
 Implication:
 
-- the first hosted-runtime experiment needs a new explicit container command or entrypoint
+- the first Railway app deployment can use the Dockerfile directly, provided the required variables are defined on the app service before deploy
 
 ### 3. The current hosted DB is schema-only
 
@@ -143,6 +142,12 @@ Status:
 ### Task B: Make the Dockerfile use the new entrypoint
 
 Update the image so the default command matches the self-hosted contract rather than the legacy credentials-repo contract.
+
+Status:
+
+- complete in repo
+- Dockerfile now builds with `yarn build-hosted-db`
+- Dockerfile now starts with `yarn start-hosted-db`
 
 ### Task C: Dry-run the environment contract locally
 

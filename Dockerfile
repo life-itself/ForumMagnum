@@ -16,5 +16,6 @@ COPY scripts/postinstall.sh scripts/postinstall.sh
 # save the layer diff
 RUN yarn install && yarn cache clean
 COPY . .
+RUN yarn build-hosted-db
 EXPOSE 8080
-CMD [ "yarn", "run", "production" ]
+CMD [ "yarn", "start-hosted-db" ]

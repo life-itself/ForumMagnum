@@ -202,6 +202,13 @@ Observed hosted-runtime dry run:
 - `/graphql` responded to `currentUser` with `{"data":{"currentUser":null}}`
 - the previous build blocker on `/auth/linkgdrive` was resolved by lazy-loading `google-auth-library` inside the route handler instead of importing it at module scope
 
+Container/runtime alignment:
+
+- the Dockerfile now uses Node `24.13.0`
+- the Dockerfile builds with `yarn build-hosted-db`
+- the Dockerfile starts with `yarn start-hosted-db`
+- for Railway, the required service variables must be present before deploy because the build step consumes them
+
 ## Runtime Dependency Matrix
 
 This is the current stage-1 assessment based on code inspection. It should be treated as a working matrix and updated after the first real smoke test.
