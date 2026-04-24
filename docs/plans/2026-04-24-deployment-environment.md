@@ -108,10 +108,31 @@ git commit -m "docs: define minimum deployment runtime"
 
 **Files:**
 - Modify: `docs/deployment-notes.md`
+- Create: `scripts/checkLocalPrereqs.sh`
 - Optional create: `scripts/checkHostedDbConnection.sh`
+- Modify: `package.json`
 - Test: remote database connectivity commands
 
-**Step 1: Verify external connectivity to the hosted database**
+**Step 1: Verify local prerequisites**
+
+Run:
+
+```bash
+yarn check-local-prereqs
+```
+
+Expected: confirms `node`, `psql`, and `railway` are available locally.
+
+**Step 2: Provision the correct Railway database service**
+
+Document the exact stage-1 path:
+
+- use Railway
+- select the `pgvector` Postgres path, not plain Postgres
+- authenticate with `railway login`
+- retrieve the public connection string and export it as `PG_URL`
+
+**Step 3: Verify external connectivity to the hosted database**
 
 Run:
 
@@ -121,7 +142,7 @@ psql "$PG_URL" -c 'select version();'
 
 Expected: successful local connection to the managed database.
 
-**Step 2: Verify extension support**
+**Step 4: Verify extension support**
 
 Run:
 
@@ -131,7 +152,7 @@ psql "$PG_URL" -c 'create extension if not exists vector;'
 
 Expected: success, or a provider-specific error that disqualifies the stage-1 database choice.
 
-**Step 3: Record SSL and connectivity requirements**
+**Step 5: Record SSL and connectivity requirements**
 
 Document:
 
@@ -139,7 +160,16 @@ Document:
 - any required connection-string parameters
 - whether local access is stable enough for daily development
 
-**Step 4: If the connectivity checks are non-trivial, script them**
+**Step 6: Script the prereq and connectivity checks**
+
+Create:
+
+- `scripts/checkLocalPrereqs.sh`
+- `scripts/checkHostedDbConnection.sh`
+
+And wire them into `package.json` for repeatable use.
+
+**Step 7: If the connectivity checks are non-trivial, keep them scripted**
 
 Create `scripts/checkHostedDbConnection.sh` that validates:
 
@@ -147,10 +177,10 @@ Create `scripts/checkHostedDbConnection.sh` that validates:
 - local connectivity works
 - the required extension is available
 
-**Step 5: Commit**
+**Step 8: Commit**
 
 ```bash
-git add docs/deployment-notes.md scripts/checkHostedDbConnection.sh
+git add docs/deployment-notes.md scripts/checkLocalPrereqs.sh scripts/checkHostedDbConnection.sh package.json
 git commit -m "docs: codify hosted database connectivity"
 ```
 

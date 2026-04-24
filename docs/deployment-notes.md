@@ -48,6 +48,57 @@ At this stage, do not assume:
 - Cloudinary is required for first boot
 - CKEditor authoring flows need to work
 
+## Local Prerequisites
+
+Before attempting stage 1 from a laptop, verify the local toolchain:
+
+- Node.js `>=24.13.0`
+- `psql`
+- Railway CLI
+
+Checks:
+
+```bash
+yarn check-local-prereqs
+```
+
+Typical macOS install path:
+
+```bash
+brew install libpq
+brew install railway
+echo 'export PATH="/opt/homebrew/opt/libpq/bin:$PATH"' >> ~/.zshrc
+```
+
+Then restart the shell or reload the profile before rerunning the check.
+
+## Railway Stage 1 Setup
+
+For the first hosted database proof, use Railway's `pgvector` Postgres path rather than the standard Postgres template.
+
+Suggested flow:
+
+1. Install and authenticate the Railway CLI:
+   ```bash
+   railway login
+   ```
+2. Create or select a Railway project.
+3. Add a PostgreSQL service with `pgvector`.
+4. Retrieve the external connection string for the database service and export it locally as `PG_URL`.
+5. Validate local connectivity:
+   ```bash
+   yarn check-hosted-db
+   ```
+
+What to record once this is working:
+
+- which Railway template/service path was used
+- whether the public connection string requires SSL parameters
+- the exact variable name Railway exposes for the public DB URL
+- any local-shell setup needed to make `psql` available
+
+The first goal is not to automate the entire Railway project lifecycle. It is to make the database setup and local connectivity steps explicit and repeatable.
+
 ## Runtime Dependency Matrix
 
 This is the current stage-1 assessment based on code inspection. It should be treated as a working matrix and updated after the first real smoke test.
@@ -111,6 +162,7 @@ The codebase currently deploys to **Vercel** (primary) with a separate **Fly.io*
 - The Dockerfile references a private `Credentials` repo decrypted via `transcrypt` — you'd replace that with your own settings mechanism.
 - `yarn generate` must be run after any schema/GraphQL changes before building.
 - The local runtime public config comes from code-backed `ENV_NAME` settings, not an arbitrary JSON file.
+- Railway's standard Postgres path is not the stage-1 target here; use the `pgvector` variant so extension support is not a surprise later.
 - The forum type (LessWrong, AlignmentForum, EA Forum) is configured in settings — you'd likely want to customize this or create your own.
 - Memory: production startup sets `--max_old_space_size=2560` (2.5GB).
 - Connection pooling: `PG_MAX_CONNECTIONS` defaults to 25 per instance.
