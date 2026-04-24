@@ -56,5 +56,19 @@ export const stage1Lw = merge({
       },
     ],
   },
+  annualReview: {
+    showReviewOnFrontPageIfActive: false,
+    announcementPostPath: null,
+    votingResultsPostPath: "",
+  },
+  lightconeFundraiser: {
+    active: false,
+    postId: "",
+    paymentLinkId: "",
+    thermometerGoalAmount: 0,
+    thermometerGoal2Amount: 0,
+    thermometerGoal3Amount: 0,
+    thermometerBgUrl: "",
+  },
   ultraFeedEnabled: false,
 }, sharedSettings);

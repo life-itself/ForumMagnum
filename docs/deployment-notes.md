@@ -61,6 +61,7 @@ Important stage-1 constraint:
 - the stage-1 profile also inherits a large `sharedSettings` baseline
 - so even with `ENV_NAME=stage1Lw`, many production-style public values can still appear unless they are explicitly overridden or scrubbed from the seed database
 - for now, that is acceptable because the current milestone is runtime viability, not final staging isolation
+- the schema bootstrap path does not seed forum content such as posts; it gives us structure and settings, not a populated forum dataset
 
 ## Local Prerequisites
 
@@ -163,6 +164,7 @@ Observed first-run verification:
 - schema import succeeded against Railway `pgvector`
 - marking migrations as executed recorded the repo migration set without replaying historical transforms
 - a follow-up `yarn migrate up dev lw` with explicit env injection applied `0 migrations`
+- the hosted DB had `0` rows in `Posts` after schema bootstrap, confirming that this path is schema-only and not a content seed
 
 Direct local startup against hosted DB:
 
@@ -194,6 +196,7 @@ This is the current stage-1 assessment based on code inspection. It should be tr
 Smoke-test status from the first hosted-DB run:
 
 - homepage: passes
+- homepage content state: renders "No posts to display."
 - `/login`: passes
 - `/account`: passes while logged out
 - `/newPost`: passes at route-load level
@@ -202,9 +205,10 @@ Smoke-test status from the first hosted-DB run:
 
 Known blockers after the first smoke test:
 
-- the tested post route returned HTTP `200`, but the server logged `app.missing_document` during resolver execution
+- the tested post route returned HTTP `200`, but the server logged `app.missing_document` during resolver execution because the schema-only bootstrap produced no `Posts` rows
 - `/newPost` loads, but authoring is not yet validated
 - the stage-1 profile is still influenced by database-backed `publicSettings` and code-backed `sharedSettings`
+- if we want realistic read-path testing, we need a seeded content snapshot or targeted fixture inserts as a separate step
 
 ## External Services (by importance)
 
