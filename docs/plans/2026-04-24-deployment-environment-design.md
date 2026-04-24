@@ -43,7 +43,7 @@ Stage 1 succeeds if we can:
 
 - Provision a hosted PostgreSQL database with the required extensions
 - Load the checked-in schema
-- Supply a minimal local settings and environment profile without Vercel env-pull or the credentials repo
+- Supply a minimal local runtime profile without Vercel env-pull or the credentials repo
 - Start the app locally
 - Verify basic DB-backed rendering for a small set of pages and routes
 - Record which supposedly optional services actually fail hard at runtime
@@ -64,10 +64,11 @@ Stage 1 does not need to prove:
 
 - Node.js `>=24.13.0`
 - PostgreSQL 15+ with `pgvector`
+- External connectivity from a local machine with workable SSL settings
 - Direct access to load `schema/accepted_schema.sql`
 - `PG_URL`
 - `ENV_NAME`
-- Minimal settings file derived from `sample_settings.json`
+- A valid code-backed public settings profile selected by `ENV_NAME`, or explicit code changes to support a local public settings file
 - Minimal private settings, especially a session secret
 
 ### Expected To Be Disableable Or Deferred
@@ -102,6 +103,7 @@ Why:
 - Lowest operational complexity for the first proof
 - Official `pgvector` path exists
 - Simple project/service/env model
+- Straightforward local-to-managed-database access is part of the evaluation model
 - Lower startup cost than Fly Managed Postgres
 - Good enough to validate the database and config assumptions before any full hosted deployment work
 
@@ -118,6 +120,7 @@ Why it matters:
 Why not first:
 
 - Higher cost and more platform surface area than needed for the first proof
+- The first stage optimizes for local runtime connecting to hosted Postgres, so external connectivity and SSL ergonomics matter more than eventual app/database colocation
 
 ### Deferred Candidate: Coolify
 
@@ -140,7 +143,7 @@ Why not first:
 The deployment effort should proceed along two tracks:
 
 1. Runtime simplification
-   Identify the smallest set of settings, environment variables, and startup steps needed to run the app against a managed database.
+   Identify the smallest set of code-backed settings, environment variables, and startup steps needed to run the app against a managed database.
 
 2. Platform packaging
    Once local runtime + hosted DB works reliably, package that proven runtime for hosted deployment on Railway or Fly.
@@ -158,6 +161,16 @@ Mitigation:
 - Treat stage 1 as a discovery exercise with a written runtime matrix
 - Verify a narrow set of pages first
 
+### Risk: The Plan Assumes A Config Mechanism The App Does Not Have
+
+Local runtime public settings currently come from `ENV_NAME` and code-backed settings modules, not from an arbitrary JSON settings file.
+
+Mitigation:
+
+- Choose one of two explicit paths before execution:
+- Add a new stage-1 `ENV_NAME` profile in code
+- Or add explicit support for a local public settings file in dev mode
+
 ### Risk: Dev Startup Assumes Vercel Too Strongly
 
 The default dev script pulls env vars from Vercel. That is the wrong dependency for a self-hosted proof.
@@ -174,6 +187,16 @@ Mitigation:
 
 - Test both schema import and migration execution in stage 1
 - Record the authoritative bootstrap sequence
+- Use commands that actually match the repo's migration CLI contract
+
+### Risk: Connectivity To Hosted Postgres Is Frictionful
+
+The provider may support `pgvector` but still be a poor stage-1 fit if local access is awkward because of SSL or network policy.
+
+Mitigation:
+
+- Treat local external connectivity as a first-class provider selection criterion
+- Verify `psql` connectivity before application bootstrap work
 
 ### Risk: Search Is More Central Than Expected
 
@@ -189,6 +212,7 @@ Mitigation:
 We can call the design successful when:
 
 - A hosted Postgres instance exists and can be recreated predictably
+- Local `psql` and app connectivity to that database are both reliable
 - The app can run locally against it with explicit local configuration
 - We have a short, repeatable bootstrap document or script
 - We know which services are actually required for the next stage
@@ -199,8 +223,10 @@ We can call the design successful when:
 ```mermaid
 flowchart TD
     A[Stage 1: Local runtime + hosted Railway pgvector Postgres] --> B[Load schema and verify app boots]
-    B --> C[Create minimal local settings and env profile]
-    C --> D[Smoke-test read paths: home, posts, GraphQL, DB-backed pages]
+    B --> B1[Verify local psql and app connectivity, including SSL behavior]
+    B1 --> C[Build runtime dependency matrix and choose config strategy]
+    C --> C1[Either add stage-1 ENV_NAME profile or add local public-settings loading]
+    C1 --> D[Smoke-test read paths: home, posts, GraphQL, DB-backed pages]
 
     D --> E[Stage 2: Stabilize local dev against hosted DB]
     E --> F[Document required env vars and startup commands]
@@ -239,6 +265,8 @@ flowchart TD
 - The schema requires PostgreSQL extensions including `vector`
 - The current dev script pulls env vars from Vercel
 - The production script assumes a private credentials repository
+- Local runtime public settings are selected by `ENV_NAME` in code, not by an arbitrary local JSON file
+- The migration flow has its own CLI contract and must be invoked with commands that match the wrapper
 - Search can be disabled via instance settings
 - Mailgun and Intercom appear to fail soft when unset
 - The repo already includes a Dockerfile, but runtime assumptions still need simplification before hosted deployment work

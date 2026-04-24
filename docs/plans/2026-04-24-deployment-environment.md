@@ -10,7 +10,57 @@
 
 ---
 
-### Task 1: Audit and codify the minimum runtime contract
+### Task 1: Build the runtime dependency matrix
+
+**Files:**
+- Modify: `docs/plans/2026-04-24-deployment-environment-design.md`
+- Modify: `docs/deployment-notes.md`
+- Test: manual verification of startup-adjacent integrations
+
+**Step 1: List startup-adjacent integrations**
+
+Start with:
+
+- database connection
+- search
+- auth/session
+- CKEditor
+- Cloudinary
+- Mailgun
+- Intercom
+- language-model integrations
+
+**Step 2: Verify their unset behavior in code**
+
+Run:
+
+```bash
+rg -n "expressSessionSecret|disableElastic|ckEditor|cloudinary|mailgun|intercom|openAIApiKey|oAuth" packages app scripts
+```
+
+Expected: enough references to classify each dependency.
+
+**Step 3: Write a runtime dependency matrix**
+
+For each integration, record:
+
+- startup blocker?
+- route blocker?
+- feature-only blocker?
+- can defer?
+
+**Step 4: Add the matrix summary to the docs**
+
+Document the dependencies that must be present before any boot attempt.
+
+**Step 5: Commit**
+
+```bash
+git add docs/plans/2026-04-24-deployment-environment-design.md docs/deployment-notes.md
+git commit -m "docs: add runtime dependency matrix"
+```
+
+### Task 2: Audit and codify the minimum runtime contract
 
 **Files:**
 - Modify: `docs/deployment-notes.md`
@@ -23,7 +73,9 @@ List the exact variables and files needed for stage 1:
 
 - `PG_URL`
 - `ENV_NAME`
-- local settings JSON path
+- one explicit public-config strategy:
+  - add a new code-backed `ENV_NAME` profile, or
+  - add dev support for a local public settings file
 - `private_expressSessionSecret`
 - `public.disableElastic`
 
@@ -52,7 +104,57 @@ git add docs/deployment-notes.md docs/plans/2026-04-24-deployment-environment-de
 git commit -m "docs: define minimum deployment runtime"
 ```
 
-### Task 2: Add a direct local startup path that does not depend on Vercel env pull
+### Task 3: Verify provider connectivity and bootstrap contract
+
+**Files:**
+- Modify: `docs/deployment-notes.md`
+- Optional create: `scripts/checkHostedDbConnection.sh`
+- Test: remote database connectivity commands
+
+**Step 1: Verify external connectivity to the hosted database**
+
+Run:
+
+```bash
+psql "$PG_URL" -c 'select version();'
+```
+
+Expected: successful local connection to the managed database.
+
+**Step 2: Verify extension support**
+
+Run:
+
+```bash
+psql "$PG_URL" -c 'create extension if not exists vector;'
+```
+
+Expected: success, or a provider-specific error that disqualifies the stage-1 database choice.
+
+**Step 3: Record SSL and connectivity requirements**
+
+Document:
+
+- whether SSL is required
+- any required connection-string parameters
+- whether local access is stable enough for daily development
+
+**Step 4: If the connectivity checks are non-trivial, script them**
+
+Create `scripts/checkHostedDbConnection.sh` that validates:
+
+- `PG_URL` is set
+- local connectivity works
+- the required extension is available
+
+**Step 5: Commit**
+
+```bash
+git add docs/deployment-notes.md scripts/checkHostedDbConnection.sh
+git commit -m "docs: codify hosted database connectivity"
+```
+
+### Task 4: Add a direct local startup path that does not depend on Vercel env pull
 
 **Files:**
 - Create: `scripts/runHostedDbDev.sh`
@@ -105,56 +207,50 @@ git add scripts/runHostedDbDev.sh package.json docs/deployment-notes.md
 git commit -m "scripts: add direct hosted-db dev startup"
 ```
 
-### Task 3: Create a stage-1 local config example
+### Task 5: Make the public config strategy real
 
 **Files:**
-- Create: `sample_settings.stage1.json`
+- Modify: `packages/lesswrong/server/settings/settings.ts`
+- Optional create: a new settings module under `packages/lesswrong/server/settings/`
 - Modify: `docs/deployment-notes.md`
-- Test: JSON validation by inspection and local build/start use
+- Test: local startup uses the intended stage-1 config path
 
-**Step 1: Write the failing comparison**
+**Step 1: Write the failing design check**
 
-Inspect the existing sample:
-
-```bash
-sed -n '1,220p' sample_settings.json
-```
-
-Expected: it is generic and does not document a stage-1 deployment profile.
-
-**Step 2: Create `sample_settings.stage1.json`**
-
-Include:
-
-- basic public branding
-- `siteUrl`
-- `forumType`
-- `analytics.environment`
-- `disableElastic: true`
-- any other public settings needed specifically for stage 1
-
-**Step 3: Document how it is used**
-
-Add usage notes showing how this file pairs with `ENV_NAME` and `private_*` env vars.
-
-**Step 4: Sanity-check the file**
-
-Run:
+Inspect:
 
 ```bash
-node -e "JSON.parse(require('fs').readFileSync('sample_settings.stage1.json','utf8')); console.log('ok')"
+sed -n '1,260p' packages/lesswrong/server/settings/settings.ts
 ```
 
-Expected: `ok`
+Expected: the current local runtime uses `ENV_NAME`-selected code-backed settings, not an arbitrary JSON file.
+
+**Step 2: Choose one explicit path**
+
+Preferred:
+
+- add a new code-backed stage-1 `ENV_NAME` profile
+
+Alternative:
+
+- add explicit dev support for loading a local public settings file
+
+**Step 3: Implement the smallest viable path**
+
+Do not add both unless the code strongly justifies it.
+
+**Step 4: Verify the chosen config path is actually used at runtime**
+
+Run the local startup path and confirm the expected public settings are visible.
 
 **Step 5: Commit**
 
 ```bash
-git add sample_settings.stage1.json docs/deployment-notes.md
-git commit -m "docs: add stage-1 settings example"
+git add packages/lesswrong/server/settings/settings.ts packages/lesswrong/server/settings docs/deployment-notes.md
+git commit -m "feat: add stage-1 public config path"
 ```
 
-### Task 4: Prove blank managed database bootstrap
+### Task 6: Prove blank managed database bootstrap
 
 **Files:**
 - Modify: `docs/deployment-notes.md`
@@ -167,7 +263,7 @@ Attempt bootstrap manually against a fresh managed database using:
 
 ```bash
 psql "$PG_URL" -f ./schema/accepted_schema.sql
-yarn migrate up
+yarn migrate up dev lw
 ```
 
 Expected: either full success or a concrete failure that reveals the missing bootstrap step.
@@ -179,6 +275,7 @@ Document whether the working sequence is:
 - schema import only
 - migrations only
 - schema import then migrations
+- schema import plus a repo-specific migration wrapper with environment/forum arguments
 
 **Step 3: If the sequence is non-trivial, script it**
 
@@ -186,7 +283,7 @@ Create `scripts/bootstrapHostedDb.sh` that:
 
 - checks `PG_URL`
 - loads the schema
-- runs migrations
+- runs migrations using a valid repo command
 - exits clearly on failure
 
 **Step 4: Re-run against a fresh database**
@@ -200,7 +297,7 @@ git add docs/deployment-notes.md scripts/bootstrapHostedDb.sh
 git commit -m "scripts: document hosted database bootstrap"
 ```
 
-### Task 5: Verify stage-1 local runtime against hosted Postgres
+### Task 7: Verify stage-1 local runtime against hosted Postgres
 
 **Files:**
 - Modify: `docs/deployment-notes.md`
@@ -215,6 +312,8 @@ Cover:
 - homepage renders
 - a post page renders
 - GraphQL route responds
+- one auth-adjacent route degrades cleanly or is explicitly documented as unsupported
+- one editor-adjacent route degrades cleanly or is explicitly documented as unsupported
 - no hard failure from disabled search
 
 **Step 2: Run the smoke test**
@@ -240,7 +339,7 @@ git add docs/deployment-notes.md docs/checklists/stage1-smoke-test.md
 git commit -m "docs: add stage-1 smoke test checklist"
 ```
 
-### Task 6: Prepare the first hosted runtime experiment
+### Task 8: Prepare the first hosted runtime experiment
 
 **Files:**
 - Create: `docs/plans/2026-04-24-hosted-runtime-followup.md`
@@ -252,8 +351,8 @@ git commit -m "docs: add stage-1 smoke test checklist"
 
 Decision rule:
 
-- choose Railway if simplicity remains best
-- choose Fly if runtime/process separation becomes more important
+- choose Railway if Dockerfile deployment, env injection, and health-checking are simple enough and cross-provider DB latency remains acceptable
+- choose Fly if runtime/process separation, future worker model, and app/database colocation matter more than keeping the fewest platform concepts
 
 **Step 2: Write the smallest hosted runtime checklist**
 
@@ -264,6 +363,8 @@ Include:
 - secrets handling
 - health check route
 - rollback path
+- whether the Dockerfile still assumes credentials or build-time secrets we do not want
+- whether scheduled work can be added later without changing the base deployment model
 
 **Step 3: Document deferred features explicitly**
 
