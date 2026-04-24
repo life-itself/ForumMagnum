@@ -12,10 +12,11 @@
 ## Minimal Deployment Steps
 
 1. **Set up PostgreSQL** with pgvector, then initialize from `schema/accepted_schema.sql`
-2. **Configure settings** — create a settings JSON file (see `sample_settings.json`) and set environment variables, especially:
+2. **Configure runtime**:
    - `PG_URL` — database connection string
-   - `ENV_NAME` — environment identifier
+   - `ENV_NAME` — environment identifier used to select code-backed public settings in `packages/lesswrong/server/settings/settings.ts`
    - Private settings via `private_*` prefixed env vars (see `packages/lesswrong/server/databaseSettings.ts` for the full list)
+   - If you want a custom public config outside the built-in `ENV_NAME` profiles, you must add explicit code support for it first
 3. **Build & run**:
    ```bash
    yarn install
@@ -23,16 +24,58 @@
    yarn build --settings ./your-settings.json --production
    yarn run production
    ```
-4. **Run migrations**: `yarn migrate up` (uses `PG_URL`)
+4. **Run migrations**: use the repo's migration wrapper with environment and forum arguments, e.g. `yarn migrate up dev lw`
 5. **Set up cron jobs** — the app expects periodic hits to `/api/cron/every-minute`, `/api/cron/every-hour`, `/api/cron/every-midnight`, etc. (defined in `vercel.json`)
+
+## Stage 1 Minimum Runtime
+
+For the first self-hosted proof, target the smallest viable setup:
+
+- Local app runtime
+- Hosted PostgreSQL with `pgvector`
+- Direct local connectivity to the database, including any required SSL parameters
+- `PG_URL`
+- `ENV_NAME`
+- `private_expressSessionSecret`
+- Search explicitly disabled with `public.disableElastic=true` in the selected public settings profile
+
+At this stage, do not assume:
+
+- a custom local public settings JSON is already supported
+- OAuth is required
+- Elasticsearch is required
+- Mailgun is required
+- Cloudinary is required for first boot
+- CKEditor authoring flows need to work
+
+## Runtime Dependency Matrix
+
+This is the current stage-1 assessment based on code inspection. It should be treated as a working matrix and updated after the first real smoke test.
+
+| Integration | Unset behavior | Stage-1 classification |
+|-------------|----------------|------------------------|
+| PostgreSQL / `PG_URL` | Core DB access fails | Hard startup blocker |
+| Public settings via `ENV_NAME` | App falls back or misconfigures if invalid | Hard startup/config blocker |
+| `private_expressSessionSecret` | Sessions/auth are unsafe or broken | Hard runtime blocker |
+| Elasticsearch | Can be disabled with `disableElastic=true` | Deferable if explicitly disabled |
+| OAuth providers | Login paths unavailable | Route/feature blocker only |
+| Mailgun | Send paths fail soft when client is missing | Feature-only blocker |
+| Intercom | Client is only created if token exists | Feature-only blocker |
+| Cloudinary | Upload and some rich media flows degrade | Feature/route blocker, not startup blocker |
+| CKEditor cloud/editor services | Editor-adjacent flows may fail or degrade | Route/feature blocker, not yet proven startup blocker |
+| OpenAI and related AI integrations | AI features unavailable | Feature-only blocker |
 
 ## External Services (by importance)
 
-### Required for basic operation
+### Required for stage 1
 
-- **Elasticsearch** — powers site search (`packages/lesswrong/server/search/elastic/`)
-- **CKEditor Cloud** — the rich text editor needs cloud credentials (environment ID, secret key, API key)
+- **PostgreSQL with `pgvector`**
 - **Express session secret** — for auth sessions
+
+### Deferred for stage 1 unless proven otherwise
+
+- **Elasticsearch** — powers site search (`packages/lesswrong/server/search/elastic/`), but can likely be disabled for first boot
+- **CKEditor Cloud** — the rich text editor needs cloud credentials (environment ID, secret key, API key), but authoring is not part of the first proof
 
 ### Required for auth (pick at least one)
 
@@ -67,6 +110,7 @@ The codebase currently deploys to **Vercel** (primary) with a separate **Fly.io*
 
 - The Dockerfile references a private `Credentials` repo decrypted via `transcrypt` — you'd replace that with your own settings mechanism.
 - `yarn generate` must be run after any schema/GraphQL changes before building.
+- The local runtime public config comes from code-backed `ENV_NAME` settings, not an arbitrary JSON file.
 - The forum type (LessWrong, AlignmentForum, EA Forum) is configured in settings — you'd likely want to customize this or create your own.
 - Memory: production startup sets `--max_old_space_size=2560` (2.5GB).
 - Connection pooling: `PG_MAX_CONNECTIONS` defaults to 25 per instance.
@@ -86,7 +130,7 @@ The codebase currently deploys to **Vercel** (primary) with a separate **Fly.io*
 
 ## Settings File Structure
 
-The settings file (`sample_settings.json`) has a `public` section for client-visible config:
+The checked-in settings example (`sample_settings.json`) shows the shape of public config:
 
 ```json
 {
@@ -104,3 +148,5 @@ The settings file (`sample_settings.json`) has a `public` section for client-vis
 ```
 
 Private settings are provided via environment variables with a `private_` prefix (e.g. `private_languageModels_openai_apiKey`). Nested keys use underscores as separators.
+
+For local stage-1 work, do not assume this JSON file is loaded automatically. The current local runtime selects public settings from code via `ENV_NAME`.
