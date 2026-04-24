@@ -195,9 +195,16 @@ Smoke-test status from the first hosted-DB run:
 
 - homepage: passes
 - `/login`: passes
+- `/account`: passes while logged out
 - `/newPost`: passes at route-load level
 - `/graphql`: passes for a simple unauthenticated query
 - authenticated behavior: unauthenticated requests degrade cleanly to `currentUser: null`
+
+Known blockers after the first smoke test:
+
+- the tested post route returned HTTP `200`, but the server logged `app.missing_document` during resolver execution
+- `/newPost` loads, but authoring is not yet validated
+- the stage-1 profile is still influenced by database-backed `publicSettings` and code-backed `sharedSettings`
 
 ## External Services (by importance)
 
