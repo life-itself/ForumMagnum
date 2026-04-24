@@ -176,6 +176,32 @@ private_expressSessionSecret='replace-me' \
 yarn start-hosted-db-dev
 ```
 
+Hosted build and production-style start against hosted DB:
+
+```bash
+PATH="/opt/homebrew/opt/libpq/bin:$PATH" \
+PG_URL='postgres://...' \
+ENV_NAME=stage1Lw \
+private_expressSessionSecret='replace-me' \
+yarn build-hosted-db
+
+PATH="/opt/homebrew/opt/libpq/bin:$PATH" \
+PG_URL='postgres://...' \
+ENV_NAME=stage1Lw \
+private_expressSessionSecret='replace-me' \
+PORT=8080 \
+yarn start-hosted-db
+```
+
+Observed hosted-runtime dry run:
+
+- `yarn build-hosted-db` completed successfully against the Railway DB
+- `yarn start-hosted-db` booted the built app locally on port `8080`
+- `/` responded with HTTP `200`
+- `/login` responded with HTTP `200`
+- `/graphql` responded to `currentUser` with `{"data":{"currentUser":null}}`
+- the previous build blocker on `/auth/linkgdrive` was resolved by lazy-loading `google-auth-library` inside the route handler instead of importing it at module scope
+
 ## Runtime Dependency Matrix
 
 This is the current stage-1 assessment based on code inspection. It should be treated as a working matrix and updated after the first real smoke test.

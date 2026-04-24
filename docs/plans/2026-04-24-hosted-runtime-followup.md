@@ -31,9 +31,14 @@ What is already proven:
 
 What is not yet proven:
 
-- a production-style app build can run without the private credentials repo
 - a container image can build and boot cleanly on a hosted platform
 - realistic content rendering works, because the current stage-1 DB is schema-only and has no `Posts` rows
+
+What is now proven locally after the follow-up work:
+
+- a production-style build can run without the private credentials repo by using `yarn build-hosted-db`
+- a built app can start locally against the Railway DB by using `yarn start-hosted-db`
+- `/`, `/login`, and `/graphql` respond under that production-style local runtime
 
 ## Hosted Runtime Decision
 
@@ -57,16 +62,20 @@ That is incompatible with the current self-hosting direction.
 Implication:
 
 - the first hosted runtime cannot use `yarn run production` unchanged
+- use the explicit self-hosted pair instead:
+  - `yarn build-hosted-db`
+  - `yarn start-hosted-db`
 
 ### 2. The Dockerfile still points at the production script contract
 
-[`Dockerfile`](/Users/rgrp/src/ForumMagnum/Dockerfile) now uses Node `24.13.0`, which matches the repo requirement, but it still ends with:
+[`Dockerfile`](/Users/rgrp/src/ForumMagnum/Dockerfile) now uses Node `24.13.0`, which matches the repo requirement, but its runtime command still needs to be moved off the legacy credentials path.
 
-```dockerfile
-CMD [ "yarn", "run", "production" ]
-```
+The repo now has explicit self-hosted commands:
 
-That means the container still assumes the credentials-repo workflow unless we change the runtime command.
+- `yarn build-hosted-db`
+- `yarn start-hosted-db`
+
+That gives us the replacement contract, but the image should be updated to use it.
 
 Implication:
 
@@ -124,10 +133,12 @@ Add a script specifically for hosted app runtime that:
 - requires `PG_URL` and `ENV_NAME`
 - starts the built app directly
 
-Possible direction:
+Status:
 
-- keep build-time and run-time responsibilities separate
-- use `next build` plus `next start`, or an equivalent repo-supported path that does not depend on settings files from a private repo
+- complete in repo as `scripts/buildHostedDb.sh`
+- complete in repo as `scripts/runHostedDbProduction.sh`
+- exposed as `yarn build-hosted-db` and `yarn start-hosted-db`
+- validated locally against the Railway database
 
 ### Task B: Make the Dockerfile use the new entrypoint
 
@@ -139,6 +150,27 @@ Before remote deployment, prove that the same env set works for:
 
 - local production-style build
 - local `next start`
+
+Suggested command pair:
+
+```bash
+PG_URL='postgres://...' \
+ENV_NAME=stage1Lw \
+private_expressSessionSecret='replace-me' \
+yarn build-hosted-db
+
+PG_URL='postgres://...' \
+ENV_NAME=stage1Lw \
+private_expressSessionSecret='replace-me' \
+PORT=8080 \
+yarn start-hosted-db
+```
+
+Status:
+
+- complete
+- the build initially failed during page-data collection for `/auth/linkgdrive`
+- the fix was to lazy-load `google-auth-library` inside the route handler instead of importing it at module scope
 
 ### Task D: Deploy to Railway app runtime
 

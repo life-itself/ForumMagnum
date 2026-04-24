@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { OAuth2Client as GoogleOAuth2Client } from 'google-auth-library';
 import { googleDocImportClientIdSetting, googleDocImportClientSecretSetting } from '@/server/databaseSettings';
 import { combineUrls } from '@/lib/vulcan-lib/utils';
 import { getUserFromReq } from '@/server/vulcan-lib/apollo-server/getUserFromReq';
@@ -28,6 +27,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const { OAuth2Client: GoogleOAuth2Client } = await import('google-auth-library');
   const callbackUrl = "google_oauth2callback";
   const oauth2Client = new GoogleOAuth2Client(
     googleClientId,

@@ -34,6 +34,8 @@
     "start-playwright": "PORT=3456 ENV_NAME=test FORUM_TYPE=LessWrong E2E=true PG_URL=postgres://postgres:password@localhost:5433/postgres next dev",
     "start-playwright-crosspost": "PORT=3467 E2E=true ENV_NAME=testCrosspost FORUM_TYPE=LessWrong PG_URL=postgres://postgres:password@localhost:5434/postgres next dev",
     "start-hosted-db-dev": "./scripts/runHostedDbDev.sh",
+    "build-hosted-db": "./scripts/buildHostedDb.sh",
+    "start-hosted-db": "./scripts/runHostedDbProduction.sh",
     "brigader-check": "ts-node -r tsconfig-paths/register scripts/brigaderCheck.ts",
     "create-collection": "scripts/createCollection.sh",
     "graphql-codegen": "graphql-codegen --config codegen.ts",
