@@ -230,6 +230,11 @@ yarn start-hosted-db-dev
 
 Expected: a clean, explicit failure message about missing required env vars.
 
+Observed result:
+
+- the direct startup path works with explicit `PG_URL`, `ENV_NAME=stage1Lw`, `FORUM_TYPE=LessWrong`, and `private_expressSessionSecret`
+- it avoids `vercel env pull` entirely
+
 **Step 5: Commit**
 
 ```bash
@@ -272,6 +277,16 @@ Do not add both unless the code strongly justifies it.
 **Step 4: Verify the chosen config path is actually used at runtime**
 
 Run the local startup path and confirm the expected public settings are visible.
+
+Observed result:
+
+- the `stage1Lw` profile is used for baseline overrides, including `disableElastic=true`
+- the runtime still loads `publicSettings` from the database and merges in `sharedSettings`
+- that means the current stage-1 proof demonstrates runtime viability, not full product isolation
+
+Follow-up implication:
+
+- if we want a neutral staging identity later, we will need either a scrubbed seed database or a stronger override strategy for database-backed public settings
 
 **Step 5: Commit**
 

@@ -48,6 +48,20 @@ At this stage, do not assume:
 - Cloudinary is required for first boot
 - CKEditor authoring flows need to work
 
+What stage 1 has actually proven so far:
+
+- the app boots locally against a hosted Railway `pgvector` Postgres database
+- the homepage, `/login`, `/newPost`, and `/graphql` all respond against that hosted DB
+- a simple GraphQL query for `currentUser` returns `null` cleanly when no login flow is configured
+- the stage-1 profile is sufficient for a runtime proof, not for a clean-room product identity
+
+Important stage-1 constraint:
+
+- after startup, the app loads database-backed `publicSettings` from Postgres
+- the stage-1 profile also inherits a large `sharedSettings` baseline
+- so even with `ENV_NAME=stage1Lw`, many production-style public values can still appear unless they are explicitly overridden or scrubbed from the seed database
+- for now, that is acceptable because the current milestone is runtime viability, not final staging isolation
+
 ## Local Prerequisites
 
 Before attempting stage 1 from a laptop, verify the local toolchain:
@@ -112,6 +126,7 @@ The first goal is not to automate the entire Railway project lifecycle. It is to
 - The deployed `pgvector` service exposed:
   - `DATABASE_URL` for external access
   - `DATABASE_URL_PRIVATE` for Railway-internal access
+- `railway connect` is not enough on its own; a local Postgres client such as `psql` is still required for bootstrap and verification
 
 ## Stage 1 Commands
 
@@ -143,6 +158,12 @@ Bootstrap behavior:
 
 This repo should not replay the entire historical migration chain immediately after loading `schema/accepted_schema.sql` into a blank database.
 
+Observed first-run verification:
+
+- schema import succeeded against Railway `pgvector`
+- marking migrations as executed recorded the repo migration set without replaying historical transforms
+- a follow-up `yarn migrate up dev lw` with explicit env injection applied `0 migrations`
+
 Direct local startup against hosted DB:
 
 ```bash
@@ -169,6 +190,14 @@ This is the current stage-1 assessment based on code inspection. It should be tr
 | Cloudinary | Upload and some rich media flows degrade | Feature/route blocker, not startup blocker |
 | CKEditor cloud/editor services | Editor-adjacent flows may fail or degrade | Route/feature blocker, not yet proven startup blocker |
 | OpenAI and related AI integrations | AI features unavailable | Feature-only blocker |
+
+Smoke-test status from the first hosted-DB run:
+
+- homepage: passes
+- `/login`: passes
+- `/newPost`: passes at route-load level
+- `/graphql`: passes for a simple unauthenticated query
+- authenticated behavior: unauthenticated requests degrade cleanly to `currentUser: null`
 
 ## External Services (by importance)
 

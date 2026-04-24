@@ -32,6 +32,7 @@ export const stage1Lw = merge({
   allowTypeIIIPlayer: false,
   hasRejectedContentSection: true,
   hasCuratedPosts: true,
+  expectedDatabaseId: "development",
   performanceMetricLogging: {
     enabled: false,
   },
