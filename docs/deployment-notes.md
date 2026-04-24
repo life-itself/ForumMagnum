@@ -35,7 +35,7 @@ For the first self-hosted proof, target the smallest viable setup:
 - Hosted PostgreSQL with `pgvector`
 - Direct local connectivity to the database, including any required SSL parameters
 - `PG_URL`
-- `ENV_NAME`
+- `ENV_NAME=stage1Lw`
 - `private_expressSessionSecret`
 - Search explicitly disabled with `public.disableElastic=true` in the selected public settings profile
 
@@ -82,9 +82,11 @@ Suggested flow:
    ```bash
    railway login
    ```
-2. Create or select a Railway project.
-3. Add a PostgreSQL service with `pgvector`.
-4. Retrieve the external connection string for the database service and export it locally as `PG_URL`.
+2. Create or select exactly one Railway project.
+3. Add the `pgvector` template directly to that project.
+   Do not add standard Postgres first and expect to enable `pgvector` later.
+4. Retrieve the external connection string for the `pgvector` service and export it locally as `PG_URL`.
+   In our case, Railway exposed the correct external URL as `DATABASE_URL`.
 5. Validate local connectivity:
    ```bash
    yarn check-hosted-db
@@ -98,6 +100,58 @@ What to record once this is working:
 - any local-shell setup needed to make `psql` available
 
 The first goal is not to automate the entire Railway project lifecycle. It is to make the database setup and local connectivity steps explicit and repeatable.
+
+### Railway-specific learnings from the first run
+
+- Railway's standard Postgres service is not the correct stage-1 choice for this repo; use the `pgvector` template directly.
+- The Railway CLI was able to create and link the project, but not provision the `pgvector` template by code.
+  For now, the reliable path is to add the `pgvector` service from the dashboard/template flow.
+- On the free plan, accidentally creating a second project can block service creation because of project limits.
+  Keep the workflow to one project, verify the project ID, then add services inside it.
+- The repo is linked to Railway by project ID in `~/.railway/config.json`.
+- The deployed `pgvector` service exposed:
+  - `DATABASE_URL` for external access
+  - `DATABASE_URL_PRIVATE` for Railway-internal access
+
+## Stage 1 Commands
+
+Local prerequisite check:
+
+```bash
+yarn check-local-prereqs
+```
+
+Hosted DB connectivity check:
+
+```bash
+PG_URL='postgres://...' yarn check-hosted-db
+```
+
+Hosted DB bootstrap:
+
+```bash
+PATH="/opt/homebrew/opt/libpq/bin:$PATH" \
+PG_URL='postgres://...' \
+yarn bootstrap-hosted-db
+```
+
+Bootstrap behavior:
+
+- on a fresh DB, `yarn bootstrap-hosted-db` loads `schema/accepted_schema.sql`
+- then it marks schema-backed migrations as executed using the repo's migration storage
+- on a non-fresh DB, it skips schema import and runs the normal migration wrapper with explicit local env injection
+
+This repo should not replay the entire historical migration chain immediately after loading `schema/accepted_schema.sql` into a blank database.
+
+Direct local startup against hosted DB:
+
+```bash
+PATH="/opt/homebrew/opt/libpq/bin:$PATH" \
+PG_URL='postgres://...' \
+ENV_NAME=stage1Lw \
+private_expressSessionSecret='replace-me' \
+yarn start-hosted-db-dev
+```
 
 ## Runtime Dependency Matrix
 
@@ -163,6 +217,7 @@ The codebase currently deploys to **Vercel** (primary) with a separate **Fly.io*
 - `yarn generate` must be run after any schema/GraphQL changes before building.
 - The local runtime public config comes from code-backed `ENV_NAME` settings, not an arbitrary JSON file.
 - Railway's standard Postgres path is not the stage-1 target here; use the `pgvector` variant so extension support is not a surprise later.
+- Railway project duplication can waste limited free-plan quota and block setup; keep to one linked project.
 - The forum type (LessWrong, AlignmentForum, EA Forum) is configured in settings — you'd likely want to customize this or create your own.
 - Memory: production startup sets `--max_old_space_size=2560` (2.5GB).
 - Connection pooling: `PG_MAX_CONNECTIONS` defaults to 25 per instance.

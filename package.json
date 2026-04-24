@@ -33,6 +33,7 @@
     "playwright-test-crosspost": "CROSSPOST_TEST=true playwright test",
     "start-playwright": "PORT=3456 ENV_NAME=test FORUM_TYPE=LessWrong E2E=true PG_URL=postgres://postgres:password@localhost:5433/postgres next dev",
     "start-playwright-crosspost": "PORT=3467 E2E=true ENV_NAME=testCrosspost FORUM_TYPE=LessWrong PG_URL=postgres://postgres:password@localhost:5434/postgres next dev",
+    "start-hosted-db-dev": "./scripts/runHostedDbDev.sh",
     "brigader-check": "ts-node -r tsconfig-paths/register scripts/brigaderCheck.ts",
     "create-collection": "scripts/createCollection.sh",
     "graphql-codegen": "graphql-codegen --config codegen.ts",
@@ -42,6 +43,7 @@
     "unused-jss-classes": "ts-node --swc -r tsconfig-paths/register scripts/unusedJssClasses.ts",
     "check-local-prereqs": "./scripts/checkLocalPrereqs.sh",
     "check-hosted-db": "./scripts/checkHostedDbConnection.sh",
+    "bootstrap-hosted-db": "./scripts/bootstrapHostedDb.sh",
     "next-start": "NODE_OPTIONS='--inspect --no-deprecation --enable-source-maps' next start"
   },
   "dependencies": {

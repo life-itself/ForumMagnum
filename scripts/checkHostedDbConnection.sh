@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+if [[ -d "/opt/homebrew/opt/libpq/bin" ]]; then
+  export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
+fi
+
 if ! command -v psql >/dev/null 2>&1; then
   echo "psql is required but not installed."
   echo "Install with: brew install libpq"

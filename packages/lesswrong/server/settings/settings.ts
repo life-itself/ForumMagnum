@@ -6,13 +6,14 @@ import { localLwDevDb } from "./localLwDevDb";
 import { localLwProdDb } from "./localLwProdDb";
 import { prodAf } from "./prodAf";
 import { prodLw } from "./prodLw";
+import { stage1Lw } from "./stage1Lw";
 import { testSettings } from "./test";
 import { testCrosspostSettings } from "./testCrosspost";
 import { z } from "zod";
 import { isAnyTest, isProduction } from "@/lib/executionEnvironment";
 import { isAF } from "@/lib/forumTypeUtils";
 
-const validEnvNames = z.enum(["test", "testCrosspost", "baserates","localLwDevDb", "prodLw"]);
+const validEnvNames = z.enum(["test", "testCrosspost", "baserates","localLwDevDb", "prodLw", "stage1Lw"]);
 
 function getPublicSettings() {
   if (isAnyTest) {
@@ -44,6 +45,8 @@ function getPublicSettings() {
     // We're running a local dev instance against the dev db, or in the deployed dev environment
     case "localLwDevDb":
       return isAF() ? localAfDevDb : localLwDevDb;
+    case "stage1Lw":
+      return stage1Lw;
     // TODO: figure out what to do about preview environments (i.e. whether they should hit the prod db).
     // Even if they do, they should probably not run with "prod" settings (rather "local prod").
     case "prodLw": {
