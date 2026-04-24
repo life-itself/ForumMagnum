@@ -181,6 +181,13 @@ Status:
 
 Only after Tasks A-C are green.
 
+Current blocker:
+
+- the linked Railway project only contains the `pgvector` database service
+- `railway up --service forum-magnum-app` currently fails with `Service not found`
+- in this environment, the Railway CLI exposes service management for existing services but not app-service creation
+- so the next deploy attempt requires creating a separate app service in the Railway project first, then targeting that service with the existing build/start contract
+
 ## Deferred Features
 
 Explicitly not in scope for the first remote app deployment:
