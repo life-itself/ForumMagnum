@@ -31,31 +31,26 @@ What is not fully working yet:
 - behavior beyond the basic read-path smoke checks is still pending
 - authoring, richer content routes, and seeded-content behavior are not yet verified
 
-## Clean-Slate Railway Flow
+## Clean-Slate Reproduction
 
-### 1. Log In
+This is the shortest clean-slate path that reproduces the current green deploy.
+
+### 1. Log In And Create One Project
 
 ```bash
 railway login
-```
-
-### 2. Create Or Link The Project
-
-If the project does not exist yet:
-
-```bash
 railway init -n forummagnum-stage1
 ```
 
 Do not create duplicate projects.
 
-### 3. Add The Database Service
+### 2. Add The Database Service
 
 Use the Railway `pgvector` template in the dashboard.
 
 Do not use plain Railway Postgres for this stage.
 
-### 4. Create The App Service
+### 3. Create The App Service
 
 This can be done from CLI:
 
@@ -65,7 +60,7 @@ railway add -s forum-magnum-app
 
 This creates a new service inside the existing project. It does not create a new project.
 
-### 5. Set App Service Variables
+### 4. Set App Service Variables
 
 ```bash
 railway variable set -s forum-magnum-app --skip-deploys \
@@ -82,7 +77,7 @@ Notes:
 - `PG_URL=${{pgvector.DATABASE_URL_PRIVATE}}` keeps app-to-DB traffic inside Railway
 - replace `private_expressSessionSecret` with a real random value
 
-### 6. Deploy The App
+### 5. Deploy The App
 
 ```bash
 railway up --service forum-magnum-app --ci
@@ -108,6 +103,16 @@ So after `railway up`, always verify separately with:
 railway service status -s forum-magnum-app --json
 railway logs -s forum-magnum-app --latest --build --lines 200
 ```
+
+### 6. Generate Or Read The Service URL
+
+```bash
+railway domain -s forum-magnum-app --json
+```
+
+Current live URL:
+
+- `https://forum-magnum-app-production.up.railway.app`
 
 ## Working Deployment Notes
 
@@ -166,7 +171,7 @@ The key fixes that got this green were:
 That means the deployment problem is now narrowed from "can we get it online?"
 to "what works correctly on the live service?"
 
-## Recommended Iteration Loop
+## Repeatable Redeploy Loop
 
 Use this loop for repeatable redeploys:
 
@@ -197,7 +202,7 @@ For the local preflight flow, see:
 
 - [deploy-local-with-docker.md](/Users/rgrp/src/ForumMagnum/docs/deploy-local-with-docker.md)
 
-## Next Verification
+## Current Verification
 
 With the service online, the next checks are:
 
@@ -212,6 +217,16 @@ Current live smoke-check status:
 - `/`: HTTP `200`
 - `/login`: HTTP `200`
 - `/graphql`: returns `{"data":{"currentUser":null}}` for an anonymous request
+
+## Next Work
+
+The deployment problem is solved enough for stage 1. The next work is product/runtime verification:
+
+1. verify richer read routes beyond the homepage
+2. seed minimal content into the Railway DB so post pages are meaningful
+3. verify one real login path
+4. verify one basic authoring path
+5. decide which stage-2 dependencies are actually required next
 
 Expected caveat:
 

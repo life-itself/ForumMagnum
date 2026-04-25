@@ -252,6 +252,12 @@ The important strategic conclusion is that Railway's Dockerfile path was the
 wrong path for this repo. The first successful hosted deployment came only after
 switching the service to Railpack and making the build/runtime contract explicit.
 
+Documentation status:
+
+- concise rerun instructions now live in [deploy-railway.md](/Users/rgrp/src/ForumMagnum/docs/deploy-railway.md)
+- local Docker preflight instructions live in [deploy-local-with-docker.md](/Users/rgrp/src/ForumMagnum/docs/deploy-local-with-docker.md)
+- this file remains the longer running notebook of what was tried and what was learned
+
 Notes:
 
 - `railway add -s forum-magnum-app` creates the app service inside the already-linked project; it does not create a new project
