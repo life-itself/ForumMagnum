@@ -76,6 +76,7 @@ typings
 build*
 !build.ts
 !buildUtil.js
+!scripts/startup/buildUtil.ts
 yarn-error.log
 public/lesswrong-editor/obj
 ckEditor/obj
