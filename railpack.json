@@ -3,7 +3,7 @@
   "steps": {
     "install": {
       "commands": [
-        "yarn install --frozen-lockfile --ignore-scripts --ignore-optional"
+        "yarn install --frozen-lockfile --ignore-scripts"
       ]
     }
   }
