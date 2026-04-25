@@ -135,6 +135,9 @@ As of the latest attempt:
   env override alone was not reliably reflected in build logs
 - we cannot drop optional dependencies from the root install because
   `@swc/core` relies on an optional Linux binary package during `yarn generate`
+- we also cannot leave all install scripts disabled without compensation,
+  because `bcrypt` needs its native binding built; the Railway build command now
+  runs `npm rebuild bcrypt` before codegen/build
 - another observed failure mode was Railway's builder dropping with
   `rpc error: code = Unavailable desc = error reading from server: EOF`
   during highly parallel static generation; the repo now caps Next build
@@ -165,10 +168,11 @@ At the moment, the intended Railway build order is:
 
 1. `yarn install`
 2. Railpack install step uses `yarn install --frozen-lockfile --ignore-scripts`
-3. `cd ckEditor && yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
-4. `cd ckEditor && yarn build`
-5. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
-6. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong next build`
+3. `npm rebuild bcrypt`
+4. `cd ckEditor && yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
+5. `cd ckEditor && yarn build`
+6. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
+7. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong next build`
 
 The hosted-build tuning currently also includes:
 
