@@ -119,6 +119,10 @@ As of the latest attempt:
 - one resolved container-build failure was missing `ckEditor/build/ckeditor`
   during `next build`; the build command now runs `cd ckEditor && yarn build`
   before `yarn generate` and `next build`
+- on Railpack, `ckEditor` also needs its own dependency install step because the
+  root package install does not populate `ckEditor/node_modules`; the build
+  command in [railway.json](/Users/rgrp/src/ForumMagnum/railway.json) now runs
+  `cd ckEditor && yarn install --frozen-lockfile` before the editor build
 - another observed failure mode was Railway's builder dropping with
   `rpc error: code = Unavailable desc = error reading from server: EOF`
   during highly parallel static generation; the repo now caps Next build
@@ -148,9 +152,10 @@ Use this loop until the first deploy succeeds:
 At the moment, the intended Railway build order is:
 
 1. `yarn install`
-2. `cd ckEditor && yarn build`
-3. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
-4. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong next build`
+2. `cd ckEditor && yarn install --frozen-lockfile`
+3. `cd ckEditor && yarn build`
+4. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
+5. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong next build`
 
 The hosted-build tuning currently also includes:
 

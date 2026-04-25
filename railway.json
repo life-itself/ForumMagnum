@@ -2,7 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "cd ckEditor && yarn build && ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate && ENV_NAME=stage1Lw FORUM_TYPE=LessWrong ./node_modules/.bin/next build"
+    "buildCommand": "cd ckEditor && yarn install --frozen-lockfile && yarn build && cd .. && ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate && ENV_NAME=stage1Lw FORUM_TYPE=LessWrong ./node_modules/.bin/next build"
   },
   "deploy": {
     "startCommand": "./node_modules/.bin/next start --port ${PORT:-8080}",
