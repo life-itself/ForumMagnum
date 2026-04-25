@@ -122,7 +122,12 @@ As of the latest attempt:
 - on Railpack, `ckEditor` also needs its own dependency install step because the
   root package install does not populate `ckEditor/node_modules`; the build
   command in [railway.json](/Users/rgrp/src/ForumMagnum/railway.json) now runs
-  `cd ckEditor && yarn install --frozen-lockfile` before the editor build
+  `cd ckEditor && yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
+  before the editor build
+- Railway's build config also now sets
+  `RAILPACK_INSTALL_COMMAND=yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
+  on the service to cut unnecessary optional/native install work from the root
+  dependency phase
 - another observed failure mode was Railway's builder dropping with
   `rpc error: code = Unavailable desc = error reading from server: EOF`
   during highly parallel static generation; the repo now caps Next build
@@ -152,10 +157,11 @@ Use this loop until the first deploy succeeds:
 At the moment, the intended Railway build order is:
 
 1. `yarn install`
-2. `cd ckEditor && yarn install --frozen-lockfile`
-3. `cd ckEditor && yarn build`
-4. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
-5. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong next build`
+2. root install uses `RAILPACK_INSTALL_COMMAND=yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
+3. `cd ckEditor && yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
+4. `cd ckEditor && yarn build`
+5. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
+6. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong next build`
 
 The hosted-build tuning currently also includes:
 
