@@ -25,10 +25,9 @@ What is already working:
 
 What is not fully working yet:
 
-- the Railway app deployment is still failing during the container build
-- current failure point is in the Docker image build path, not in Railway project/service setup
-- the current concrete failure was that Railway did not have a usable CKEditor
-  bundle in image build context, so the image now builds CKEditor explicitly
+- the Railway app deployment is still failing after the app build phase
+- current failure point appears to be late in Railway's image import/deploy handoff,
+  not project/service creation
 
 ## Clean-Slate Railway Flow
 
@@ -114,6 +113,10 @@ As of the latest attempt:
   `rpc error: code = Unavailable desc = error reading from server: EOF`
   during highly parallel static generation; the repo now caps Next build
   parallelism in `next.config.ts`
+- another concrete deploy defect was that the Docker context included a local
+  `.next/` directory that was about `2.6G`; [`.dockerignore`](/Users/rgrp/src/ForumMagnum/.dockerignore)
+  now excludes `.next` and `tmp` so Railway only builds the image from source,
+  not from stale local build artifacts
 
 That means Railway itself is no longer the main unknown.
 

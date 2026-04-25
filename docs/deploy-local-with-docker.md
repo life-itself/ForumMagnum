@@ -44,6 +44,7 @@ docker build -t forummagnum-stage1:local .
 What this validates:
 
 - Docker build context includes the files Railway needs
+- Docker build context does not include stale local artifacts like `.next/`
 - `yarn install` works in the image
 - `cd ckEditor && yarn build` works in the image
 - `yarn generate` works in the image
@@ -62,6 +63,13 @@ The Dockerfile currently bakes the stage-1 build path directly into the image bu
 
 The app config also caps Next build parallelism in [`next.config.ts`](/Users/rgrp/src/ForumMagnum/next.config.ts)
 for hosted builds after Railway dropped a builder connection during static generation.
+
+The Docker context must stay clean. In particular:
+
+- local `.next/` must not be sent to Docker or Railway
+- local `tmp/` should stay out of the image context
+
+Those are now excluded in [`.dockerignore`](/Users/rgrp/src/ForumMagnum/.dockerignore). If the Docker context grows unexpectedly again, check that file first.
 
 The runtime environment still needs:
 

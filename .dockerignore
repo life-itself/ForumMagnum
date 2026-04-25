@@ -6,3 +6,9 @@ yarn-debug.log
 .git
 .gitignore
 .meteor
+.next
+tmp
+.DS_Store
+coverage
+playwright-report
+test-results
