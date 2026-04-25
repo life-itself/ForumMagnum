@@ -178,6 +178,8 @@ Status:
 - the fix was to lazy-load `google-auth-library` inside the route handler instead of importing it at module scope
 - the first remote Docker build then failed because `eslint-plugin-local` is a file dependency and the Dockerfile was not copying it before `yarn install`
 - the Dockerfile has been updated to copy `eslint-plugin-local` before dependency installation
+- the next remote Docker build then failed because Railway's upload respected ignore rules and `scripts/buildHostedDb.sh` was not present in the build context
+- the Dockerfile now avoids that ignored-file dependency by running the build and start commands inline
 
 ### Task D: Deploy to Railway app runtime
 
