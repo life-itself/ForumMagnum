@@ -19,15 +19,17 @@ What is already working:
 - Railway project exists: `forummagnum-stage1`
 - Railway database service exists: `pgvector`
 - Railway app service exists: `forum-magnum-app`
+- Railway app service is online
+- Railway app URL is `https://forum-magnum-app-production.up.railway.app`
 - app service variables can be set entirely from CLI
 - local app runtime works against the Railway database
 - local production-style build/start works against the Railway database
+- hosted app deployment works on Railway via Railpack
 
 What is not fully working yet:
 
-- the Railway app deployment is still failing after app build completes
-- the repeated failure boundary is Dockerfile-based image import/handoff on Railway,
-  not project/service creation or app compilation
+- behavior verification is still pending
+- we have not yet confirmed the live route behavior beyond service-online status
 
 ## Clean-Slate Railway Flow
 
@@ -107,15 +109,21 @@ railway service status -s forum-magnum-app --json
 railway logs -s forum-magnum-app --latest --build --lines 200
 ```
 
-## Current Known Blockers
+## Working Deployment Notes
 
-As of the latest attempt:
+The first successful hosted deployment uses:
 
-- service creation works
-- service variable wiring works
-- deployment submission works
-- the remaining failures are specifically on Railway's Dockerfile deployment
-  path after build completion
+- Railway project `forummagnum-stage1`
+- Railway DB service `pgvector`
+- Railway app service `forum-magnum-app`
+- app URL `https://forum-magnum-app-production.up.railway.app`
+- `RAILPACK` builder
+- [`railway.json`](/Users/rgrp/src/ForumMagnum/railway.json) for build/start/healthcheck
+- [`railpack.json`](/Users/rgrp/src/ForumMagnum/railpack.json) for Railpack install-step override
+
+The key fixes that got this green were:
+
+- move Railway off the root Dockerfile path
 - one resolved container-build failure was missing `ckEditor/build/ckeditor`
   during `next build`; the build command now runs `cd ckEditor && yarn build`
   before `yarn generate` and `next build`
@@ -138,6 +146,9 @@ As of the latest attempt:
 - we also cannot leave all install scripts disabled without compensation,
   because `bcrypt` needs its native binding built; the Railway build command now
   runs `npm rebuild bcrypt` before codegen/build
+- the successful Railway path is no longer blocked on Dockerfile image import
+- the remaining work is smoke-testing and runtime-behavior validation, not
+  getting the service online
 - another observed failure mode was Railway's builder dropping with
   `rpc error: code = Unavailable desc = error reading from server: EOF`
   during highly parallel static generation; the repo now caps Next build
@@ -152,12 +163,12 @@ As of the latest attempt:
   deployment is being moved to Railpack via
   [railway.json](/Users/rgrp/src/ForumMagnum/railway.json)
 
-That means the next Railway experiment is not another Dockerfile tweak. It is a
-builder-path change away from Dockerfile auto-detection.
+That means the deployment problem is now narrowed from "can we get it online?"
+to "what works correctly on the live service?"
 
 ## Recommended Iteration Loop
 
-Use this loop until the first deploy succeeds:
+Use this loop for repeatable redeploys:
 
 1. reproduce the app build locally or with `Dockerfile.local` when useful
 2. keep Railway on the Railpack path defined in `railway.json`
@@ -186,13 +197,14 @@ For the local preflight flow, see:
 
 - [deploy-local-with-docker.md](/Users/rgrp/src/ForumMagnum/docs/deploy-local-with-docker.md)
 
-## Smoke Checks After First Success
+## Next Verification
 
-Once Railway reports a successful app deployment, check:
+With the service online, the next checks are:
 
 - `/`
 - `/login`
 - `/graphql`
+- `/api/health`
 
 Expected caveat:
 

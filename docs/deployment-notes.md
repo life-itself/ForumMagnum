@@ -222,6 +222,29 @@ railway variable set -s forum-magnum-app --skip-deploys \
 railway up --service forum-magnum-app --ci
 ```
 
+Successful hosted Railway deployment checkpoint:
+
+- project: `forummagnum-stage1`
+- DB service: `pgvector`
+- app service: `forum-magnum-app`
+- app URL: `https://forum-magnum-app-production.up.railway.app`
+- app service status: `SUCCESS`
+- working deploy path: `RAILPACK` via [`railway.json`](/Users/rgrp/src/ForumMagnum/railway.json)
+- Railpack install override: [`railpack.json`](/Users/rgrp/src/ForumMagnum/railpack.json)
+
+The working hosted build path is now:
+
+1. Railpack root install with `yarn install --frozen-lockfile --ignore-scripts`
+2. `npm rebuild bcrypt`
+3. `cd ckEditor && yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
+4. `cd ckEditor && yarn build`
+5. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
+6. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong ./node_modules/.bin/next build`
+
+The important strategic conclusion is that Railway's Dockerfile path was the
+wrong path for this repo. The first successful hosted deployment came only after
+switching the service to Railpack and making the build/runtime contract explicit.
+
 Notes:
 
 - `railway add -s forum-magnum-app` creates the app service inside the already-linked project; it does not create a new project
