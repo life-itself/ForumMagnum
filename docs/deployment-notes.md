@@ -121,6 +121,8 @@ The first goal is not to automate the entire Railway project lifecycle. It is to
 - Railway's standard Postgres service is not the correct stage-1 choice for this repo; use the `pgvector` template directly.
 - The Railway CLI was able to create and link the project, but not provision the `pgvector` template by code.
   For now, the reliable path is to add the `pgvector` service from the dashboard/template flow.
+- The Railway CLI can create the app service directly once the project already exists:
+  `railway add -s forum-magnum-app`
 - On the free plan, accidentally creating a second project can block service creation because of project limits.
   Keep the workflow to one project, verify the project ID, then add services inside it.
 - The repo is linked to Railway by project ID in `~/.railway/config.json`.
@@ -128,6 +130,8 @@ The first goal is not to automate the entire Railway project lifecycle. It is to
   - `DATABASE_URL` for external access
   - `DATABASE_URL_PRIVATE` for Railway-internal access
 - `railway connect` is not enough on its own; a local Postgres client such as `psql` is still required for bootstrap and verification
+- The app service can reference the database service's private URL with Railway variable syntax:
+  `PG_URL=${{pgvector.DATABASE_URL_PRIVATE}}`
 
 ## Stage 1 Commands
 
@@ -201,6 +205,27 @@ Observed hosted-runtime dry run:
 - `/login` responded with HTTP `200`
 - `/graphql` responded to `currentUser` with `{"data":{"currentUser":null}}`
 - the previous build blocker on `/auth/linkgdrive` was resolved by lazy-loading `google-auth-library` inside the route handler instead of importing it at module scope
+
+Clean-slate Railway app-service setup:
+
+```bash
+railway add -s forum-magnum-app
+
+railway variable set -s forum-magnum-app --skip-deploys \
+  'PG_URL=${{pgvector.DATABASE_URL_PRIVATE}}' \
+  'ENV_NAME=stage1Lw' \
+  'FORUM_TYPE=LessWrong' \
+  'private_expressSessionSecret=replace-me' \
+  'PORT=8080' \
+  'NODE_OPTIONS=--no-deprecation --max_old_space_size=2560'
+
+railway up --service forum-magnum-app --ci
+```
+
+Notes:
+
+- `railway add -s forum-magnum-app` creates the app service inside the already-linked project; it does not create a new project
+- the deploy may time out client-side during the upload handoff, but Railway can still continue the deployment in the background
 
 Container/runtime alignment:
 
