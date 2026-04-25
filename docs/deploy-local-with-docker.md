@@ -38,7 +38,7 @@ From the repo root:
 
 ```bash
 DOCKER_HOST=unix:///Users/rgrp/.colima/default/docker.sock \
-docker build -t forummagnum-stage1:local .
+docker build -f Dockerfile.local -t forummagnum-stage1:local .
 ```
 
 What this validates:
@@ -56,7 +56,7 @@ The image now generates the editor bundle explicitly.
 
 ## Expected Inputs
 
-The Dockerfile currently bakes the stage-1 build path directly into the image build:
+`Dockerfile.local` currently bakes the stage-1 build path directly into the image build:
 
 - `ENV_NAME=stage1Lw`
 - `FORUM_TYPE=LessWrong`
@@ -83,7 +83,7 @@ Treat the local failure as the primary debugging target.
 
 Typical workflow:
 
-1. fix the Dockerfile or repo code path locally
+1. fix `Dockerfile.local` or the repo code path locally
 2. rerun the local build
 3. only retry Railway after the local build passes
 

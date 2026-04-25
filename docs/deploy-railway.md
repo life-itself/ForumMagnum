@@ -25,9 +25,9 @@ What is already working:
 
 What is not fully working yet:
 
-- the Railway app deployment is still failing after the app build phase
-- current failure point appears to be late in Railway's image import/deploy handoff,
-  not project/service creation
+- the Railway app deployment is still failing after app build completes
+- the repeated failure boundary is Dockerfile-based image import/handoff on Railway,
+  not project/service creation or app compilation
 
 ## Clean-Slate Railway Flow
 
@@ -86,6 +86,15 @@ Notes:
 railway up --service forum-magnum-app --ci
 ```
 
+This repo now carries Railway deployment config in
+[railway.json](/Users/rgrp/src/ForumMagnum/railway.json). The intended Railway
+path is:
+
+- `RAILPACK` builder
+- explicit build command for CKEditor, codegen, and `next build`
+- explicit start command for `next start`
+- healthcheck on `/api/health`
+
 Important nuance:
 
 - the CLI may time out client-side during the upload handoff
@@ -105,9 +114,10 @@ As of the latest attempt:
 - service creation works
 - service variable wiring works
 - deployment submission works
-- the remaining failures are container-build failures inside the app repo path
+- the remaining failures are specifically on Railway's Dockerfile deployment
+  path after build completion
 - one resolved container-build failure was missing `ckEditor/build/ckeditor`
-  during `next build`; the Dockerfile now runs `cd ckEditor && yarn build`
+  during `next build`; the build command now runs `cd ckEditor && yarn build`
   before `yarn generate` and `next build`
 - another observed failure mode was Railway's builder dropping with
   `rpc error: code = Unavailable desc = error reading from server: EOF`
@@ -115,21 +125,27 @@ As of the latest attempt:
   parallelism in `next.config.ts`
 - another concrete deploy defect was that the Docker context included a local
   `.next/` directory that was about `2.6G`; [`.dockerignore`](/Users/rgrp/src/ForumMagnum/.dockerignore)
-  now excludes `.next` and `tmp` so Railway only builds the image from source,
-  not from stale local build artifacts
+  now excludes `.next` and `tmp` so Docker-based local builds only use source,
+  not stale local build artifacts
+- because Railway will always prefer a root `Dockerfile` when present, the local
+  Docker preflight image now lives at
+  [Dockerfile.local](/Users/rgrp/src/ForumMagnum/Dockerfile.local) and Railway
+  deployment is being moved to Railpack via
+  [railway.json](/Users/rgrp/src/ForumMagnum/railway.json)
 
-That means Railway itself is no longer the main unknown.
+That means the next Railway experiment is not another Dockerfile tweak. It is a
+builder-path change away from Dockerfile auto-detection.
 
 ## Recommended Iteration Loop
 
 Use this loop until the first deploy succeeds:
 
-1. reproduce the container build locally with Docker
-2. fix the local build failure
+1. reproduce the app build locally or with `Dockerfile.local` when useful
+2. keep Railway on the Railpack path defined in `railway.json`
 3. retry `railway up`
 4. inspect Railway status and build logs
 
-At the moment, the image build order should be understood as:
+At the moment, the intended Railway build order is:
 
 1. `yarn install`
 2. `cd ckEditor && yarn build`
