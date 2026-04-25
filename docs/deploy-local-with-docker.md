@@ -60,6 +60,9 @@ The Dockerfile currently bakes the stage-1 build path directly into the image bu
 - `ENV_NAME=stage1Lw`
 - `FORUM_TYPE=LessWrong`
 
+The app config also caps Next build parallelism in [`next.config.ts`](/Users/rgrp/src/ForumMagnum/next.config.ts)
+for hosted builds after Railway dropped a builder connection during static generation.
+
 The runtime environment still needs:
 
 - `PG_URL`

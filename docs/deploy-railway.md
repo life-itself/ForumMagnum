@@ -110,6 +110,10 @@ As of the latest attempt:
 - one resolved container-build failure was missing `ckEditor/build/ckeditor`
   during `next build`; the Dockerfile now runs `cd ckEditor && yarn build`
   before `yarn generate` and `next build`
+- another observed failure mode was Railway's builder dropping with
+  `rpc error: code = Unavailable desc = error reading from server: EOF`
+  during highly parallel static generation; the repo now caps Next build
+  parallelism in `next.config.ts`
 
 That means Railway itself is no longer the main unknown.
 
@@ -128,6 +132,14 @@ At the moment, the image build order should be understood as:
 2. `cd ckEditor && yarn build`
 3. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
 4. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong next build`
+
+The hosted-build tuning currently also includes:
+
+- `experimental.cpus = 4`
+- `experimental.staticGenerationMaxConcurrency = 4`
+
+Those are there to reduce build fan-out on Railway after the builder dropped
+mid-build during large static generation.
 
 For the local preflight flow, see:
 

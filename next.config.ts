@@ -54,6 +54,10 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: true,
   typedRoutes: true,
   experimental: {
+    // Railway's builder has been dropping the connection during highly parallel
+    // static generation. Keep build fan-out conservative for hosted builds.
+    cpus: 4,
+    staticGenerationMaxConcurrency: 4,
     serverSourceMaps: true,
     turbopackFileSystemCacheForDev: true,
   },
