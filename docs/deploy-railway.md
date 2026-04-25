@@ -128,6 +128,11 @@ As of the latest attempt:
   `RAILPACK_INSTALL_COMMAND=yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
   on the service to cut unnecessary optional/native install work from the root
   dependency phase
+- the repo now also includes
+  [railpack.json](/Users/rgrp/src/ForumMagnum/railpack.json) to override
+  Railpack's generated `install` step directly with
+  `yarn install --frozen-lockfile --ignore-scripts --ignore-optional`, because
+  the service-level env override alone was not reliably reflected in build logs
 - another observed failure mode was Railway's builder dropping with
   `rpc error: code = Unavailable desc = error reading from server: EOF`
   during highly parallel static generation; the repo now caps Next build
@@ -157,7 +162,7 @@ Use this loop until the first deploy succeeds:
 At the moment, the intended Railway build order is:
 
 1. `yarn install`
-2. root install uses `RAILPACK_INSTALL_COMMAND=yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
+2. Railpack install step uses `yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
 3. `cd ckEditor && yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
 4. `cd ckEditor && yarn build`
 5. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
