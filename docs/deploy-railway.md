@@ -27,6 +27,8 @@ What is not fully working yet:
 
 - the Railway app deployment is still failing during the container build
 - current failure point is in the Docker image build path, not in Railway project/service setup
+- the current concrete failure was that Railway did not have a usable CKEditor
+  bundle in image build context, so the image now builds CKEditor explicitly
 
 ## Clean-Slate Railway Flow
 
@@ -105,6 +107,9 @@ As of the latest attempt:
 - service variable wiring works
 - deployment submission works
 - the remaining failures are container-build failures inside the app repo path
+- one resolved container-build failure was missing `ckEditor/build/ckeditor`
+  during `next build`; the Dockerfile now runs `cd ckEditor && yarn build`
+  before `yarn generate` and `next build`
 
 That means Railway itself is no longer the main unknown.
 
@@ -116,6 +121,13 @@ Use this loop until the first deploy succeeds:
 2. fix the local build failure
 3. retry `railway up`
 4. inspect Railway status and build logs
+
+At the moment, the image build order should be understood as:
+
+1. `yarn install`
+2. `cd ckEditor && yarn build`
+3. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
+4. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong next build`
 
 For the local preflight flow, see:
 

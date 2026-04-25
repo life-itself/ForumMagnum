@@ -8,6 +8,7 @@ RUN curl -sSLo /usr/local/bin/transcrypt https://raw.githubusercontent.com/elast
 WORKDIR /usr/src/app
 COPY . .
 RUN yarn install && yarn cache clean
+RUN cd ckEditor && yarn build
 RUN ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate
 RUN ENV_NAME=stage1Lw FORUM_TYPE=LessWrong ./node_modules/.bin/next build
 EXPOSE 8080

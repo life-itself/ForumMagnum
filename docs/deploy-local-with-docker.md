@@ -45,8 +45,13 @@ What this validates:
 
 - Docker build context includes the files Railway needs
 - `yarn install` works in the image
+- `cd ckEditor && yarn build` works in the image
 - `yarn generate` works in the image
 - the production-style Next build works in the image
+
+This CKEditor step matters because Railway should not depend on a prebuilt local
+`ckEditor/build/ckeditor.js` artifact being present in the uploaded context.
+The image now generates the editor bundle explicitly.
 
 ## Expected Inputs
 
@@ -70,6 +75,19 @@ Typical workflow:
 1. fix the Dockerfile or repo code path locally
 2. rerun the local build
 3. only retry Railway after the local build passes
+
+## Current Local Caveat
+
+On this machine, Docker is running through Colima and the daemon has
+intermittently returned:
+
+```text
+mkdir /var/lib/docker/tmp/docker-builder...: input/output error
+```
+
+That is a local Docker/Colima storage problem, not a ForumMagnum build problem.
+If it recurs, treat Railway plus direct host-side `next build` as the current
+source of truth until the local daemon is stable again.
 
 ## Current Value
 
