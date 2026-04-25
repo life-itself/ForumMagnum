@@ -28,8 +28,8 @@ What is already working:
 
 What is not fully working yet:
 
-- behavior verification is still pending
-- we have not yet confirmed the live route behavior beyond service-online status
+- behavior beyond the basic read-path smoke checks is still pending
+- authoring, richer content routes, and seeded-content behavior are not yet verified
 
 ## Clean-Slate Railway Flow
 
@@ -205,6 +205,13 @@ With the service online, the next checks are:
 - `/login`
 - `/graphql`
 - `/api/health`
+
+Current live smoke-check status:
+
+- `/api/health`: HTTP `200`
+- `/`: HTTP `200`
+- `/login`: HTTP `200`
+- `/graphql`: returns `{"data":{"currentUser":null}}` for an anonymous request
 
 Expected caveat:
 

@@ -232,6 +232,13 @@ Successful hosted Railway deployment checkpoint:
 - working deploy path: `RAILPACK` via [`railway.json`](/Users/rgrp/src/ForumMagnum/railway.json)
 - Railpack install override: [`railpack.json`](/Users/rgrp/src/ForumMagnum/railpack.json)
 
+Live hosted smoke-check checkpoint:
+
+- `/api/health` returned HTTP `200`
+- `/` returned HTTP `200`
+- `/login` returned HTTP `200`
+- `/graphql` returned `{"data":{"currentUser":null}}` for an anonymous request
+
 The working hosted build path is now:
 
 1. Railpack root install with `yarn install --frozen-lockfile --ignore-scripts`
