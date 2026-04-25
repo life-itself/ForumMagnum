@@ -176,6 +176,8 @@ Status:
 - complete
 - the build initially failed during page-data collection for `/auth/linkgdrive`
 - the fix was to lazy-load `google-auth-library` inside the route handler instead of importing it at module scope
+- the first remote Docker build then failed because `eslint-plugin-local` is a file dependency and the Dockerfile was not copying it before `yarn install`
+- the Dockerfile has been updated to copy `eslint-plugin-local` before dependency installation
 
 ### Task D: Deploy to Railway app runtime
 
