@@ -25,7 +25,7 @@ export const stage1Lw = merge({
   analytics: {
     environment: "stage1",
   },
-  testServer: true,
+  testServer: process.env.TEST_SERVER !== "false",
   debug: false,
   disableElastic: true,
   fmCrosspost: { siteName: "the EA Forum", baseUrl: "https://forum.effectivealtruism.org/" },
