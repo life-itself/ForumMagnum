@@ -5,6 +5,19 @@
       "commands": [
         "yarn install --frozen-lockfile --ignore-scripts"
       ]
+    },
+    "build": {
+      "inputs": [
+        {
+          "step": "install"
+        }
+      ],
+      "commands": [
+        "npm rebuild bcrypt",
+        "cd ckEditor && yarn install --frozen-lockfile --ignore-scripts --ignore-optional && yarn build",
+        "ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate",
+        "ENV_NAME=stage1Lw FORUM_TYPE=LessWrong ./node_modules/.bin/next build"
+      ]
     }
   }
 }
