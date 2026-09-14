@@ -1,3 +1,4 @@
+import { getForumTypeForRequest } from "@/server/utils/requestUtil";
 import { NextRequest, NextResponse } from 'next/server';
 import { googleDocImportClientIdSetting, googleDocImportClientSecretSetting } from '@/server/databaseSettings';
 import { combineUrls } from '@/lib/vulcan-lib/utils';
@@ -6,9 +7,10 @@ import { userIsAdmin } from '@/lib/vulcan-users/permissions';
 import { getSiteUrlFromReq } from '@/server/utils/getSiteUrl';
 
 export async function GET(request: NextRequest) {
+  const forumType = getForumTypeForRequest(request);
   const siteUrl = getSiteUrlFromReq(request);
-  const googleClientId = googleDocImportClientIdSetting.get();
-  const googleOAuthSecret = googleDocImportClientSecretSetting.get();
+  const googleClientId = googleDocImportClientIdSetting.get(forumType);
+  const googleOAuthSecret = googleDocImportClientSecretSetting.get(forumType);
 
   if (!googleClientId || !googleOAuthSecret) {
     return NextResponse.json(
