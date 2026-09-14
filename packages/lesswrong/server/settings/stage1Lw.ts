@@ -6,7 +6,7 @@ export const stage1Lw = merge({
   title: "ForumMagnum Stage 1",
   tagline: "Stage 1 self-hosted deployment",
   siteNameWithArticle: "ForumMagnum",
-  siteUrl: "http://localhost:3000",
+  siteUrl: process.env.SITE_URL ?? "http://localhost:3000",
   sentry: {
     url: null,
     environment: "stage1",
