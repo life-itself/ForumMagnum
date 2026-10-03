@@ -24,6 +24,9 @@ import { useAbstractThemeOptions } from '../themes/useTheme';
 import { useStyles } from '../hooks/useStyles';
 import { getHighlights, highlightCodeElement, updateHighlightContext, removeHighlightContext, codeHighlightStyles } from '@/lib/codeHighlighting';
 import dynamic from 'next/dynamic';
+import SpoilerBlock, { containsSpoilerClassName, removeSpoilerClassNames } from './SpoilerBlock';
+import { ContentItemBodyContext } from './ContentItemBodyContext';
+import { handleMathCopy } from './mathCopyHandler';
 
 const ContentCodeBlockWithMenu = dynamic(() => import('./ContentCodeBlockWithMenu'));
 
@@ -57,6 +60,26 @@ const blockLevelTagNames = new Set([
   "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "li", "main", "nav", "ol",
   "p", "pre", "section", "table", "ul",
 ]);
+
+function isWhitespaceTextNode(node: DomHandlerChildNode): boolean {
+  return node.type === htmlparser2.ElementType.Text && node.data.trim() === '';
+}
+
+/**
+ * Whether all of an element's children are block-level elements (ignoring
+ * whitespace-only text between them). Used for spoiler blocks, whose
+ * children are revealed one at a time on hover when they're blocks.
+ */
+function childrenAreBlockLevel(childNodes: DomHandlerChildNode[]): boolean {
+  let sawBlock = false;
+  for (const child of childNodes) {
+    if (isWhitespaceTextNode(child)) continue;
+    if (child.type !== htmlparser2.ElementType.Tag) return false;
+    if (!blockLevelTagNames.has(child.tagName.toLowerCase())) return false;
+    sawBlock = true;
+  }
+  return sawBlock;
+}
 
 /**
  * Block-level tags which we can't put an id-insertion inside of, either because
@@ -120,6 +143,7 @@ function getIdInsertionDescendIndex(childNodes: DomHandlerChildNode[]): number|n
  *   markElicitBlocks
  *   collapseFootnotes
  *   wrapStrawPoll
+ *   renderSpoilerBlocks
  * Functionality from the old ContentItemBody which is implemented, but not well tested:
  *   addCTAButtonEventListeners
  *   exposeInternalIds
@@ -169,6 +193,16 @@ export const ContentItemBody = (props: ContentItemBodyProps) => {
     }
   }, [onContentReady]);
 
+  // Put the TeX source of rendered equations into copied plaintext
+  useEffect(() => {
+    const container = bodyRef.current;
+    if (!container) return;
+    container.addEventListener('copy', handleMathCopy);
+    return () => {
+      container.removeEventListener('copy', handleMathCopy);
+    };
+  }, []);
+
   // Apply CSS Custom Highlights API syntax highlighting to code blocks
   useEffect(() => {
     const container = bodyRef.current;
@@ -203,23 +237,32 @@ export const ContentItemBody = (props: ContentItemBodyProps) => {
   };
   
   return (
-    <div className={className} ref={bodyRef}>
-      {parsedHtml.childNodes.map((child, i) => (
-        <ContentItemBodyInner
-          key={i}
-          parsedHtml={child}
-          passedThroughProps={passedThroughProps}
-          root={true}
-        />
-      ))}
-    </div>
+    <ContentItemBodyContext.Provider value={html}>
+      <div className={className} ref={bodyRef}>
+        {parsedHtml.childNodes.map((child, i) => (
+          <ContentItemBodyInner
+            key={i}
+            parsedHtml={child}
+            passedThroughProps={passedThroughProps}
+            root={true}
+          />
+        ))}
+      </div>
+    </ContentItemBodyContext.Provider>
   );
 }
 
-const ContentItemBodyInner = ({parsedHtml, passedThroughProps, root=false, insertedAtStart}: {
+const ContentItemBodyInner = ({parsedHtml, passedThroughProps, root=false, insertedAtStart, insideSpoiler=false, insideSvg=false}: {
   parsedHtml: DomHandlerChildNode,
   passedThroughProps: PassedThroughContentItemBodyProps,
   root?: boolean,
+  insideSpoiler?: boolean,
+
+  /**
+   * Whether this element is inside an <svg> (eg a diagram), in which case
+   * it's an SVG element rather than an HTML element, and gets rendered as-is.
+   */
+  insideSvg?: boolean,
 
   /**
    * An id-insertion which was targeted at an ancestor of this element, but which
@@ -260,9 +303,21 @@ const ContentItemBodyInner = ({parsedHtml, passedThroughProps, root=false, inser
       if (TagName === 'html' || TagName === 'body' || TagName === 'head') {
         TagName = 'div';
       }
+      if (TagName in mapTagNames) {
+        TagName = mapTagNames[TagName];
+      }
       const attribs = translateAttribs(parsedHtml.attribs);
       const id = attribs.id;
       const classNames = parsedHtml.attribs.class?.split(' ') ?? [];
+      const isSpoilerElement = containsSpoilerClassName(classNames);
+      if (insideSpoiler || isSpoilerElement) {
+        const nonSpoilerClassNames = removeSpoilerClassNames(classNames);
+        if (nonSpoilerClassNames.length > 0) {
+          attribs.className = nonSpoilerClassNames.join(" ");
+        } else {
+          delete attribs.className;
+        }
+      }
 
       const ownIdInsertion = (id && passedThroughProps.idInsertions?.[id])
         ? passedThroughProps.idInsertions[id]
@@ -278,12 +333,24 @@ const ContentItemBodyInner = ({parsedHtml, passedThroughProps, root=false, inser
         ? getIdInsertionDescendIndex(parsedHtml.childNodes)
         : null;
 
-      let mappedChildren: React.ReactNode[] = parsedHtml.childNodes.map((c,i) => <ContentItemBodyInner
-        key={i}
-        parsedHtml={c}
-        passedThroughProps={passedThroughProps}
-        insertedAtStart={i===descendIndex ? idInsertion : undefined}
-      />)
+      // A spoiler block whose children are all blocks wraps each child in its
+      // own element, so drop the whitespace between them rather than giving it
+      // a wrapper of its own.
+      const spoilerWithBlockChildren = isSpoilerElement && !insideSpoiler
+        && blockLevelTagNames.has(TagName) && childrenAreBlockLevel(parsedHtml.childNodes);
+
+      let mappedChildren: React.ReactNode[] = parsedHtml.childNodes.map((c,i) => (
+        (spoilerWithBlockChildren && isWhitespaceTextNode(c))
+          ? null
+          : <ContentItemBodyInner
+              key={i}
+              parsedHtml={c}
+              passedThroughProps={passedThroughProps}
+              insertedAtStart={i===descendIndex ? idInsertion : undefined}
+              insideSpoiler={insideSpoiler || isSpoilerElement}
+              insideSvg={insideSvg || TagName === 'svg'}
+            />
+      ))
 
       if (classNames.includes("footnotes") && hasCollapsedFootnotes) {
         return <CollapsedFootnotes attributes={attribs} footnoteElements={mappedChildren}/>
@@ -403,11 +470,21 @@ const ContentItemBodyInner = ({parsedHtml, passedThroughProps, root=false, inser
         );
       }
 
+      if (isSpoilerElement && !insideSpoiler) {
+        return <SpoilerBlock
+          attributes={attribs}
+          inline={!blockLevelTagNames.has(TagName)}
+          hasBlockChildren={spoilerWithBlockChildren}
+        >
+          {result}
+        </SpoilerBlock>
+      }
+
       if (root && rootTagShouldBeHorizontallyScrollable(TagName, attribs)) {
         return <MaybeScrollableBlock TagName={TagName} attribs={attribs} bodyRef={passedThroughProps.bodyRef}>
           {result}
         </MaybeScrollableBlock>
-      } else if (TagName === 'a') {
+      } else if (TagName === 'a' && !insideSvg) {
         return <HoverPreviewLink
           href={attribs.href}
           {...passedThroughProps}
@@ -495,6 +572,39 @@ const mapAttributeNames: Record<string,string> = {
   "rowspan": "rowSpan",
   "allowfullscreen": "allowFullScreen",
   "for": "htmlFor",
+
+  // SVG attributes (see svgAllowedAttributes in @/lib/utils/sanitize). Unlike
+  // the browser's HTML parser, React doesn't fix the capitalization of SVG
+  // attributes, and lowercased ones like "viewbox" don't work.
+  "viewbox": "viewBox",
+  "preserveaspectratio": "preserveAspectRatio",
+  "maskunits": "maskUnits",
+  "clippathunits": "clipPathUnits",
+  "clip-path": "clipPath",
+  "fill-opacity": "fillOpacity",
+  "fill-rule": "fillRule",
+  "stroke-width": "strokeWidth",
+  "stroke-opacity": "strokeOpacity",
+  "stroke-linecap": "strokeLinecap",
+  "stroke-linejoin": "strokeLinejoin",
+  "stroke-dasharray": "strokeDasharray",
+  "stroke-dashoffset": "strokeDashoffset",
+  "stroke-miterlimit": "strokeMiterlimit",
+  "font-family": "fontFamily",
+  "font-size": "fontSize",
+  "font-weight": "fontWeight",
+  "font-style": "fontStyle",
+  "text-anchor": "textAnchor",
+  "dominant-baseline": "dominantBaseline",
+}
+
+/**
+ * Mapping from tag names as they appear in HTML (lowercased by the parser) to
+ * tag names as React wants them, for SVG elements whose names aren't
+ * lowercase.
+ */
+const mapTagNames: Record<string,string> = {
+  "clippath": "clipPath",
 }
 
 function camelCaseCssAttribute(input: string) {
@@ -548,6 +658,16 @@ function applyReplaceSubstrings(parsedHtml: DomHandlerChildNode, replacedSubstri
         }
       case htmlparser2.ElementType.Root:
       case htmlparser2.ElementType.Tag: {
+        // Text inside SVGs (eg the labels in diagrams) can't have HTML elements
+        // inserted into it, so it's excluded
+        if (node.type === htmlparser2.ElementType.Tag && node.tagName.toLowerCase() === 'svg') {
+          return {
+            textNodes: [],
+            separationAbove: 0,
+            separationBelow: 0,
+          };
+        }
+
         // Recurse
         const annotatedChildNodes = node.childNodes.map(n => traverse(n));
 

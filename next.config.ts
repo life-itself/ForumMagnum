@@ -70,6 +70,9 @@ const nextConfig: NextConfig = {
     // static generation. Keep build fan-out conservative for hosted builds.
     cpus: 4,
     staticGenerationMaxConcurrency: 4,
+    // LW/AF metadata intentionally reads request headers and cookies. Only
+    // validate instant navigations for routes that explicitly opt in.
+    instantInsights: { validationLevel: 'manual-warning' },
     serverSourceMaps: true,
     turbopackFileSystemCacheForDev: true,
   },
