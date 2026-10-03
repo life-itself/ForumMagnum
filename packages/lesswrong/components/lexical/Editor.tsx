@@ -69,7 +69,7 @@ import DateTimePlugin from './plugins/DateTimePlugin';
 import DragDropPaste from './plugins/DragDropPastePlugin';
 // import EmojiPickerPlugin from './plugins/EmojiPickerPlugin';
 import { MathPlugin } from '../editor/lexicalPlugins/math/MathPlugin';
-// import ExcalidrawPlugin from './plugins/ExcalidrawPlugin';
+import ExcalidrawPlugin from './plugins/ExcalidrawPlugin';
 import FigmaPlugin from './plugins/FigmaPlugin';
 import FloatingLinkEditorPlugin from './plugins/FloatingLinkEditorPlugin';
 import FloatingTextFormatToolbarPlugin from './plugins/FloatingTextFormatToolbarPlugin';
@@ -519,6 +519,9 @@ const styles = defineStyles('LexicalEditor', (theme: ThemeType) => ({
   editorScrollerComment: {
     minHeight: 'var(--lexical-comment-min-height, 60px)',
     resize: 'none',
+    // Let floating editor controls receive clicks when they extend over the
+    // comment form's submit row or moderation guidelines.
+    zIndex: 1,
   },
   editor: {
     flex: 'auto',
@@ -988,7 +991,7 @@ export default function Editor({
             <InlineCodeEscapePlugin />
             <BlockCursorNavigationPlugin />
             <MathPlugin />
-            {/* <ExcalidrawPlugin /> */}
+            <ExcalidrawPlugin isSuggestionMode={isSuggestionMode} />
             <TabFocusPlugin />
             <TabIndentationPlugin maxIndent={7} />
             <CollapsibleSectionsPlugin isSuggestionMode={isSuggestionMode} />
