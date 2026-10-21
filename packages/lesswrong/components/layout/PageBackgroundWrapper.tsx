@@ -4,6 +4,8 @@ import classNames from 'classnames';
 import { usePrerenderablePathname } from '../next/usePrerenderablePathname';
 import { routeHasWhiteBackground, routeHasCreamBackground } from '@/lib/routeChecks/routeBackgroundColors';
 import { isClient } from '@/lib/executionEnvironment';
+import { brandThemeSetting } from '@/lib/instanceSettings';
+import { forumTypeSetting } from '@/lib/forumTypeUtils';
 import "./pageBackground.css";
 
 const themeSelectorScript = `
@@ -49,11 +51,13 @@ export function BodyWithBackgroundColor({children}: {
   const isWhiteBackground = !isCreamBackground && routeHasWhiteBackground(pathname);
   const isGreyBackground = !isCreamBackground && !isWhiteBackground;
   const themeClassname = isClient && getThemeClassnameFromCookie();
+  const isSeedsBrand = brandThemeSetting.get(forumTypeSetting.get()) === 'seedsOfRenaissance';
   
   return <body suppressHydrationWarning className={classNames(
     isWhiteBackground && "whiteBackground",
     isGreyBackground && "greyBackground",
     isCreamBackground && "creamBackground",
+    isSeedsBrand && "seedsBrand",
     themeClassname,
   )}>
     <script>{themeSelectorScript}</script>

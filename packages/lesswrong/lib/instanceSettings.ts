@@ -227,6 +227,21 @@ export const twitterBotKarmaThresholdSetting = new PublicInstanceSetting<number>
 
 export const forumHeaderTitleSetting = new PublicInstanceSetting<string>('forumSettings.headerTitle', "LESSWRONG", "warning");
 export const forumShortTitleSetting = new PublicInstanceSetting<string>('forumSettings.shortForumTitle', "LW", "warning");
+/** Optional image shown before the header title (e.g. a deployment's logo mark) */
+export const forumHeaderLogoUrlSetting = new PublicInstanceSetting<string | null>('forumSettings.headerLogoUrl', null, "optional");
+/** Variant of headerLogoUrl for dark mode; falls back to headerLogoUrl */
+export const forumHeaderLogoDarkUrlSetting = new PublicInstanceSetting<string | null>('forumSettings.headerLogoDarkUrl', null, "optional");
+/** IDs of navigation menu tabs (see menuTabs.tsx) that this deployment hides */
+export const hiddenMenuTabsSetting = new PublicInstanceSetting<string[]>('forumSettings.hiddenMenuTabs', [], "optional");
+/** Whether to show LessWrong's decorative background art beside the main column */
+export const showLWBackgroundImageSetting = new PublicInstanceSetting<boolean>('forumSettings.showLWBackgroundImage', true, "optional");
+
+export type BrandThemeName = "seedsOfRenaissance";
+/**
+ * Deployment-specific brand theme layered on top of the forum type's site
+ * theme (see themes/siteThemes.ts). Changes appearance only, not behavior.
+ */
+export const brandThemeSetting = new PublicInstanceSetting<BrandThemeName | null>('brandTheme', null, "optional");
 
 export const allowTypeIIIPlayerSetting = new PublicInstanceSetting<boolean>('allowTypeIIIPlayer', false, "optional");
 

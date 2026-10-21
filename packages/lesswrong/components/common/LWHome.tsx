@@ -5,7 +5,7 @@ import { useForumType } from '@/components/hooks/useForumType';
 import type { ForumTypeString } from '@/lib/instanceSettings';
 import { AnalyticsContext } from "../../lib/analyticsEvents";
 import { getReviewPhase, reviewIsActive, REVIEW_YEAR } from '../../lib/reviewUtils';
-import { showReviewOnFrontPageIfActive, ultraFeedEnabledSetting } from '@/lib/instanceSettings';
+import { brandThemeSetting, showReviewOnFrontPageIfActive, taglineSetting, ultraFeedEnabledSetting } from '@/lib/instanceSettings';
 import { useCookiesWithConsent } from '../hooks/useCookiesWithConsent';
 import { LAST_VISITED_FRONTPAGE_COOKIE } from '../../lib/cookies/cookies';
 import moment from 'moment';
@@ -84,11 +84,13 @@ const getStructuredData = (forumType: ForumTypeString) => ({
     "@id": `${getSiteUrl(forumType)}`,
   },
   ...(forumType === 'LessWrong' && {
-    "description": [
-      "LessWrong is an online forum and community dedicated to improving human reasoning and decision-making.", 
-      "We seek to hold true beliefs and to be effective at accomplishing our goals.", 
-      "Each day, we aim to be less wrong about the world than the day before."
-    ].join(' ')
+    "description": brandThemeSetting.get(forumType)
+      ? taglineSetting.get(forumType)
+      : [
+        "LessWrong is an online forum and community dedicated to improving human reasoning and decision-making.", 
+        "We seek to hold true beliefs and to be effective at accomplishing our goals.", 
+        "Each day, we aim to be less wrong about the world than the day before."
+      ].join(' ')
   }),
   ...(forumType === 'AlignmentForum' && {
     "description": [

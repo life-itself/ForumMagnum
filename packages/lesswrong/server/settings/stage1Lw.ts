@@ -1,12 +1,17 @@
 import merge from "lodash/merge";
 import { sharedSettings } from "./sharedSettings";
 
-export const stage1Lw = merge({
+const siteUrl = process.env.SITE_URL ?? "http://localhost:3000";
+// Seeds of Renaissance brand assets, from https://design.seedsofrenaissance.org/system/logo/
+const brandAssetsPath = "/brand/seeds-of-renaissance";
+
+const stage1LwSettings = merge({
   forumType: "LessWrong",
-  title: "ForumMagnum Stage 1",
-  tagline: "Stage 1 self-hosted deployment",
-  siteNameWithArticle: "ForumMagnum",
-  siteUrl: process.env.SITE_URL ?? "http://localhost:3000",
+  title: "Seeds of Renaissance",
+  tagline: "Vision and movement for civilisational rebirth",
+  siteNameWithArticle: "Seeds of Renaissance",
+  siteUrl,
+  brandTheme: "seedsOfRenaissance",
   sentry: {
     url: null,
     environment: "stage1",
@@ -15,12 +20,26 @@ export const stage1Lw = merge({
   aboutPostId: "bJ2haLkcGeLtTWaD5",
   faqPostId: "2rWKkWuPrgTMpLRbp",
   contactPostId: "ehcYkvyz7dh9L7Wt8",
-  faviconUrl: "https://res.cloudinary.com/lesswrong-2-0/image/upload/v1497915096/favicon_lncumn.ico",
-  faviconWithBadge: "https://res.cloudinary.com/lesswrong-2-0/image/upload/v1497915096/favicon_with_badge.ico",
+  faviconUrl: `${brandAssetsPath}/favicon.ico`,
+  // The design system has no badged favicon variant
+  faviconWithBadge: `${brandAssetsPath}/favicon.ico`,
   forumSettings: {
-    headerTitle: "FORUMMAGNUM",
-    shortForumTitle: "FM",
-    tabTitle: "ForumMagnum Stage 1",
+    headerTitle: "Seeds of Renaissance",
+    shortForumTitle: "Seeds",
+    tabTitle: "Seeds of Renaissance",
+    headerLogoUrl: `${brandAssetsPath}/seeds-mark-colour-64.png`,
+    headerLogoDarkUrl: `${brandAssetsPath}/seeds-mark-colour-dark-64.png`,
+    showLWBackgroundImage: false,
+    hiddenMenuTabs: [
+      "library",
+      "bestoflesswrong",
+      "highlights",
+      "r-az",
+      "codex",
+      "hpmor",
+      "lwAlbum",
+      "leaderboard",
+    ],
   },
   analytics: {
     environment: "stage1",
@@ -72,3 +91,11 @@ export const stage1Lw = merge({
   },
   ultraFeedEnabled: false,
 }, sharedSettings);
+
+// sharedSettings wins the merge above, so keys it also sets (LessWrong's logo,
+// social image and Intercom app) must be overridden afterwards.
+export const stage1Lw = merge(stage1LwSettings, {
+  logoUrl: `${siteUrl}${brandAssetsPath}/seeds-mark-colour-512.png`,
+  siteImage: `${siteUrl}${brandAssetsPath}/seeds-mark-colour-512.png`,
+  intercomAppId: "",
+});

@@ -41,7 +41,8 @@ const IntercomWrapper = () => {
   const { cookiePreferences } = useCookiePreferences()
   const functionalCookiesAllowed = cookiePreferences.includes('functional')
   
-  if (isStandaloneRoute(pathname)) {
+  const intercomAppId = intercomAppIdSetting.get(forumType);
+  if (!intercomAppId || isStandaloneRoute(pathname)) {
     return null;
   }
   if (!functionalCookiesAllowed) {
@@ -53,7 +54,7 @@ const IntercomWrapper = () => {
   if (currentUser && !currentUser.hideIntercom) {
     return <div id="intercom-outer-frame">
       <Intercom
-        appID={intercomAppIdSetting.get(forumType)}
+        appID={intercomAppId}
         user_id={currentUser._id}
         email={getUserEmail(currentUser)}
         name={currentUser.displayName}
@@ -61,7 +62,7 @@ const IntercomWrapper = () => {
     </div>
   } else if (!currentUser) {
     return <div id="intercom-outer-frame">
-      <Intercom appID={intercomAppIdSetting.get(forumType)} />
+      <Intercom appID={intercomAppId} />
     </div>
   } else {
     return null

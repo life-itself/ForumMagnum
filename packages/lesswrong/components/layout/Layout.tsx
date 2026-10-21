@@ -10,7 +10,7 @@ import { DialogManager } from '@/components/common/withDialog';
 import { CommentBoxManager } from '@/components/hooks/useCommentBox';
 import { ItemsReadContextWrapper } from '@/components/hooks/useRecordPostView';
 import { pBodyStyle } from '../../themes/stylePiping';
-import { googleTagManagerId } from '@/lib/instanceSettings';
+import { googleTagManagerId, showLWBackgroundImageSetting } from '@/lib/instanceSettings';
 import { globalStyles } from '../../themes/globalStyles/globalStyles';
 import { excalidrawFontFaces } from '@/lib/lexical/excalidrawFontFaces';
 import { DisableNoKibitzContextProvider } from '@/components/common/sharedContexts';
@@ -250,7 +250,7 @@ const Layout = ({children}: {
                 <FlashMessages />
               </ErrorBoundary>
 
-              {isLW && <LWBackgroundImage />}
+              {isLW && showLWBackgroundImageSetting.get(forumType) && <LWBackgroundImage />}
               <div ref={searchResultsAreaRef} className={classes.searchResultsArea} />
 
               {children}

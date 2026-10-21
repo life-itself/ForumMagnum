@@ -1,7 +1,8 @@
 import React from 'react';
 import { getCommunityPath, getAllTagsPath } from '@/lib/pathConstants';
 import { REVIEW_YEAR } from '../../../lib/reviewUtils';
-import { ForumOptions } from '../../../lib/forumTypeUtils';
+import { ForumOptions, forumSelect } from '../../../lib/forumTypeUtils';
+import { forumTitleSetting, hiddenMenuTabsSetting, type ForumTypeString } from '@/lib/instanceSettings';
 
 import { compassIcon } from '../../icons/compassIcon';
 import { questionsGlobeIcon } from '../../icons/questionsGlobeIcon';
@@ -105,7 +106,7 @@ export const getMenuTabs = (): ForumOptions<Array<MenuTab>> => ({
       link: getAllTagsPath(),
       icon: conceptsIcon,
       tooltip: <div>
-        Get an overview over all the concepts used on LessWrong
+        Get an overview over all the concepts used on {forumTitleSetting.get('LessWrong')}
       </div>,
       showOnMobileStandalone: true,
       showOnCompressed: true,
@@ -315,5 +316,11 @@ export const getMenuTabs = (): ForumOptions<Array<MenuTab>> => ({
     }
   ]
 });
+
+/** The forum's menu tabs, minus any hidden by the `forumSettings.hiddenMenuTabs` setting */
+export const getVisibleMenuTabs = (forumType: ForumTypeString): Array<MenuTab> => {
+  const hiddenTabIds = hiddenMenuTabsSetting.get(forumType);
+  return forumSelect(getMenuTabs(), forumType).filter(tab => !hiddenTabIds.includes(tab.id));
+};
 
 export default getMenuTabs;

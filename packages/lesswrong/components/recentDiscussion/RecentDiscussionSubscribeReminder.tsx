@@ -104,7 +104,8 @@ const styles = defineStyles("RecentDiscussionSubscribeReminder", (theme: ThemeTy
  * so for logged in users, hiding one ad hides the other.
  */
 const RecentDiscussionSubscribeReminder = () => {
-  const { isAF, isLW } = useForumType();
+  const { isAF, isLW, forumType } = useForumType();
+  const siteName = forumTitleSetting.get(forumType);
   const classes = useStyles(styles);
   const currentUser = useCurrentUser();
   const updateCurrentUser = useUpdateCurrentUser();
@@ -115,7 +116,7 @@ const RecentDiscussionSubscribeReminder = () => {
   const emailAddressInput = useRef<HTMLInputElement|null>(null);
   const [loading, setLoading] = useState(false);
   const { flash } = useMessages();
-  const subscriptionDescription = '(2-3 posts per week, selected by the LessWrong moderation team.)';
+  const subscriptionDescription = `(2-3 posts per week, selected by the ${siteName} moderation team.)`;
   const { captureEvent } = useTracking({eventProps: {pageElementContext: "subscribeReminder"}});
   
   // Show admins a random version of the widget. Makes sure we notice if it's intrusive/bad.
@@ -202,7 +203,7 @@ const RecentDiscussionSubscribeReminder = () => {
     // Show the confirmation after the user subscribes
     let confirmText;
     if (isLW) {
-      confirmText = "You are subscribed to the best posts of LessWrong!";
+      confirmText = `You are subscribed to the best posts of ${siteName}!`;
     } else {
       confirmText = `You are subscribed to the ${forumTitleSetting} Digest`;
     }
@@ -292,7 +293,7 @@ const RecentDiscussionSubscribeReminder = () => {
     // unsubscribe-from-all option, activates curation emails (if not already
     // activated), and sends a confirmation email (if needed).
     const subscribeTextNode = <div className={classes.message}>
-        You previously unsubscribed from all emails from LessWrong.
+        You previously unsubscribed from all emails from {siteName}.
         Re-subscribe to get the best posts emailed to you! {subscriptionDescription}
       </div>;
     return <AnalyticsWrapper branch="previously-unsubscribed">
@@ -313,7 +314,7 @@ const RecentDiscussionSubscribeReminder = () => {
     // sets the subscribe-to-curated option, and (if their email address isn't
     // verified) resends the verification email.
     const subscribeTextNode = <div className={classes.message}>
-        Subscribe to get the best of LessWrong emailed to you. {subscriptionDescription}
+        Subscribe to get the best of {siteName} emailed to you. {subscriptionDescription}
       </div>;
     return <AnalyticsWrapper branch="logged-in-not-subscribed">
       {subscribeTextNode}

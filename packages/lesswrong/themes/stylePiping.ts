@@ -679,6 +679,11 @@ const baseBodyStyles = (theme: ThemeType) => ({
   },
   '& a, & a:hover, & a:active': {
     color: theme.palette.link.color ?? theme.palette.primary.main,
+    ...(theme.palette.link.underline && {
+      textDecoration: "underline",
+      textDecorationThickness: "1px",
+      textUnderlineOffset: "3px",
+    }),
     '& u': {
       textDecoration: "none"
     }
