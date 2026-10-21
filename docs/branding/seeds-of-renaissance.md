@@ -46,7 +46,7 @@ in a second merge after it.
 | `--muted` | `#5d584f` | secondary text (light) |
 | `--night` | `#171613` | page background, header (dark mode) |
 | `--chalk` | `#ece7dc` | text, links (dark mode) |
-| `--night-muted` | `#a49e93` | secondary text (dark mode) |
+| `--night-muted` | `#a49e93` | secondary text (dark mode); `primary.light`/`secondary.light` fills and marks (light) |
 | `--night-rule` | `#38342e` | active tab fill (dark mode; `TabButton` always uses white text) |
 | `--font-body` | Bricolage Grotesque | UI, post and comment bodies |
 | `--font-display` fallback | Fraunces | header name, post page titles only |
@@ -57,6 +57,10 @@ dark mode, which uses the night tokens for backgrounds, text and links. Buttons 
 primary/secondary accents keep LessWrong's dark-mode defaults: about 100 components put white
 text on `primary.main`, so a chalk fill would be unreadable, and changing those shared
 components would conflict with upstream.
+
+Text, link and header colours are written as `light-dark(light,dark)` rather than picked per
+mode, matching the default palette's `greyAlpha`, so surfaces that flip `color-scheme`
+locally (such as the current user's message bubbles in `MessageItem`) still get readable text.
 
 Links in post and comment bodies are ink, so they are underlined (1px, offset 3px, as the
 design system's `.link`) through the `link.underline` palette flag. The same flag underlines

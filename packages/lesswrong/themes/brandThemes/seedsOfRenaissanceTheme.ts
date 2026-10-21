@@ -17,6 +17,11 @@ const tokens = {
   nightRule: "#38342e",   // --night-rule
 };
 
+// Text colours use light-dark() (like the default palette's greyAlpha) so they
+// follow surfaces that flip color-scheme locally, such as sent-message bubbles.
+const inkText = `light-dark(${tokens.ink},${tokens.chalk})`;
+const mutedText = `light-dark(${tokens.muted},${tokens.nightMuted})`;
+
 // GreekFallback (declared in Layout.tsx) only covers Greek code points, so that
 // Greek letters render consistently; everything else falls through to the brand faces.
 const bodyStack = ['GreekFallback', '"Bricolage Grotesque"', 'system-ui', 'sans-serif'].join(','); // --font-body
@@ -32,8 +37,6 @@ export const seedsOfRenaissanceGoogleFontsUrl = "https://fonts.googleapis.com/cs
 export const seedsOfRenaissanceTheme: SiteThemeSpecification = {
   componentPalette: (dark: boolean) => {
     const ground = dark ? tokens.night : tokens.paper;
-    const ink = dark ? tokens.chalk : tokens.ink;
-    const muted = dark ? tokens.nightMuted : tokens.muted;
     return {
       fonts: {
         sansSerifStack: bodyStack,
@@ -41,15 +44,15 @@ export const seedsOfRenaissanceTheme: SiteThemeSpecification = {
         headerStack: titleStack,
       },
       text: {
-        primary: ink,
-        normal: ink,
-        secondary: muted,
+        primary: inkText,
+        normal: inkText,
+        secondary: mutedText,
       },
       // Links inherit the ink colour, per the design system; the logo red is
       // reserved and fails WCAG AA as body-text link colour on paper.
       link: {
-        color: ink,
-        visited: ink,
+        color: inkText,
+        visited: inkText,
         underline: true, // as the design system's .link: 1px, offset 3px
       },
       background: {
@@ -57,7 +60,7 @@ export const seedsOfRenaissanceTheme: SiteThemeSpecification = {
         profilePageBackground: ground,
       },
       header: {
-        text: ink,
+        text: inkText,
         background: ground,
       },
       // TabButton always uses white text on the active tab, so in dark mode
@@ -73,18 +76,20 @@ export const seedsOfRenaissanceTheme: SiteThemeSpecification = {
       },
       // Buttons and marks are ink. Light mode only: many components put white
       // text on primary.main, which a chalk fill would make unreadable, so dark
-      // mode keeps LessWrong's mid-tone defaults.
+      // mode keeps LessWrong's mid-tone defaults. primary.light is both a fill
+      // behind ink text and a text/icon colour, so it is the mid-tone
+      // --night-muted (6.6:1 under ink, 2.55:1 on paper; LessWrong's is 2.3:1).
       ...(!dark && {
         primary: {
           main: tokens.ink,
           dark: tokens.ink,
-          light: tokens.muted,
+          light: tokens.nightMuted,
           contrastText: tokens.paper,
         },
         secondary: {
           main: tokens.ink,
           dark: tokens.ink,
-          light: tokens.muted,
+          light: tokens.nightMuted,
           contrastText: tokens.paper,
         },
         lwTertiary: {
