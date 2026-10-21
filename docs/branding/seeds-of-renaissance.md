@@ -45,7 +45,7 @@ in a second merge after it.
 | `--ink` | `#1b1916` | text, links, buttons, active tabs (light) |
 | `--muted` | `#5d584f` | secondary text (light) |
 | `--night` | `#171613` | page background, header (dark mode) |
-| `--chalk` | `#ece7dc` | text, links, buttons (dark mode) |
+| `--chalk` | `#ece7dc` | text, links (dark mode) |
 | `--night-muted` | `#a49e93` | secondary text (dark mode) |
 | `--night-rule` | `#38342e` | active tab fill (dark mode; `TabButton` always uses white text) |
 | `--font-body` | Bricolage Grotesque | UI, post and comment bodies |
@@ -53,7 +53,10 @@ in a second merge after it.
 | `--font-label` fallback | Hanken Grotesk | buttons |
 
 The design system has no dark mode ("night is a section, not a theme"). Users can still pick
-dark mode, which uses the night tokens.
+dark mode, which uses the night tokens for backgrounds, text and links. Buttons and other
+primary/secondary accents keep LessWrong's dark-mode defaults: about 100 components put white
+text on `primary.main`, so a chalk fill would be unreadable, and changing those shared
+components would conflict with upstream.
 
 Links in post and comment bodies are ink, so they are underlined (1px, offset 3px, as the
 design system's `.link`) through the `link.underline` palette flag. On narrow screens the

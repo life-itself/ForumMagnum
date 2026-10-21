@@ -71,23 +71,27 @@ export const seedsOfRenaissanceTheme: SiteThemeSpecification = {
           },
         },
       },
-      // Buttons and marks are ink
-      primary: {
-        main: ink,
-        dark: ink,
-        light: muted,
-        contrastText: ground,
-      },
-      secondary: {
-        main: ink,
-        dark: ink,
-        light: muted,
-        contrastText: ground,
-      },
-      lwTertiary: {
-        main: muted,
-        dark: ink,
-      },
+      // Buttons and marks are ink. Light mode only: many components put white
+      // text on primary.main, which a chalk fill would make unreadable, so dark
+      // mode keeps LessWrong's mid-tone defaults.
+      ...(!dark && {
+        primary: {
+          main: tokens.ink,
+          dark: tokens.ink,
+          light: tokens.muted,
+          contrastText: tokens.paper,
+        },
+        secondary: {
+          main: tokens.ink,
+          dark: tokens.ink,
+          light: tokens.muted,
+          contrastText: tokens.paper,
+        },
+        lwTertiary: {
+          main: tokens.muted,
+          dark: tokens.ink,
+        },
+      }),
     };
   },
   make: (palette: ThemePalette) => ({
