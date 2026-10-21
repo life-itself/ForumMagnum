@@ -10,7 +10,7 @@ import { SidebarsContext } from './SidebarsWrapper';
 import withErrorBoundary from '../common/withErrorBoundary';
 import classNames from 'classnames';
 import { AnalyticsContext, useTracking } from '../../lib/analyticsEvents';
-import { forumHeaderTitleSetting, forumShortTitleSetting } from '@/lib/instanceSettings';
+import { forumHeaderLogoDarkUrlSetting, forumHeaderLogoUrlSetting, forumHeaderTitleSetting, forumShortTitleSetting } from '@/lib/instanceSettings';
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 import { useLocation } from '../../lib/routeUtil';
 import SearchBar from "@/components/common/SearchBar";
@@ -202,6 +202,24 @@ export const styles = defineStyles("Header", (theme: ThemeType) => ({
       top: 0,
     }),
   },
+  logoLink: {
+    display: 'flex',
+    flexShrink: 0,
+    marginRight: 10,
+    '&:hover, &:active': {
+      opacity: 0.7,
+    },
+  },
+  logo: {
+    height: 32,
+    width: 32,
+  },
+  lightModeOnly: {
+    display: theme.dark ? 'none' : 'block',
+  },
+  darkModeOnly: {
+    display: theme.dark ? 'block' : 'none',
+  },
   menuButton: {
     marginLeft: -8,
     marginRight: 8,
@@ -346,6 +364,8 @@ const Header = ({
 }) => {
   const { forumType } = useForumType();
   const classes = useStyles(styles);
+  const headerLogoUrl = forumHeaderLogoUrlSetting.get(forumType);
+  const headerLogoDarkUrl = forumHeaderLogoDarkUrlSetting.get(forumType);
   const [navigationOpen, setNavigationOpenState] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notificationHasOpened, setNotificationHasOpened] = useState(false);
@@ -561,17 +581,22 @@ const Header = ({
             <div className={classes.toolbar}>
               {navigationMenuButton}
 
+              {headerLogoUrl && <Link to="/" className={classes.logoLink}>
+                <img src={headerLogoUrl} alt={forumHeaderTitleSetting.get(forumType)} className={classNames(classes.logo, headerLogoDarkUrl && classes.lightModeOnly)}/>
+                {headerLogoDarkUrl && <img src={headerLogoDarkUrl} alt={forumHeaderTitleSetting.get(forumType)} className={classNames(classes.logo, classes.darkModeOnly)}/>}
+              </Link>}
               <Typography className={classNames(classes.title, classes.hideXsDown)} variant="title">
                 <Link to="/" className={classes.titleLink}>
                   {forumHeaderTitleSetting.get(forumType)}
                 </Link>
                 <HeaderSubtitle />
               </Typography>
-              <Typography className={classNames(classes.title, classes.hideSmUp)} variant="title">
+              {/* On narrow screens a logo mark, if configured, stands in for the short title */}
+              {!headerLogoUrl && <Typography className={classNames(classes.title, classes.hideSmUp)} variant="title">
                 <Link to="/" className={classes.titleLink}>
                   {forumShortTitleSetting.get(forumType)}
                 </Link>
-              </Typography>
+              </Typography>}
               {rightHeaderItemsNode}
             </div>
           </header>

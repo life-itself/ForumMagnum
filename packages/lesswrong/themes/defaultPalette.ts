@@ -249,6 +249,9 @@ export const defaultComponentPalette = (dark: boolean, isAF: boolean) => ({
     color: isAF ? "light-dark(#3f51b5,#7581d1)" : "light-dark(#327E09,#788e6a)",
     primaryDim: "light-dark(#5caab7,#3a7883)",
     visited: isAF ? "light-dark(#8c4298,#798754)" : "#798754",
+    // Whether links in post/comment bodies are underlined (for palettes where
+    // the link colour alone doesn't distinguish links from text)
+    underline: false,
   },
   linkHover: {
     dim: greyAlpha(.3),

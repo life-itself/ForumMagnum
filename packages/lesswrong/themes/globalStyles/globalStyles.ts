@@ -73,6 +73,16 @@ const globalStyle = (theme: ThemeType) => ({
     opacity: 0.5,
   },
 
+  // For palettes whose UI links share the text colour, underline links in
+  // running text so they stay distinguishable (as stylePiping does for content)
+  ...(theme.palette.link.underline && {
+    "p a, p a:hover, aside a, aside a:hover": {
+      textDecoration: "underline",
+      textDecorationThickness: "1px",
+      textUnderlineOffset: "3px",
+    },
+  }),
+
   // Don't dim images inside links on hover — the opacity effect is meant for
   // text links and looks bad when applied to linked images.
   "a:has(img):hover, a:has(img):active": {

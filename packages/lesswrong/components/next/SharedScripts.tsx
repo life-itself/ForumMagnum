@@ -6,7 +6,9 @@ import { getEmbeddedStyleLoaderScript } from "@/components/hooks/embedStyles";
 import { getSsrInjectedGraphqlLoaderScript } from "@/components/hooks/ssrInjectedGraphql";
 import { toEmbeddableJson } from "@/lib/utils/jsonUtils";
 import { getInstanceSettings } from "@/lib/getInstanceSettings";
-import { globalExternalStylesheets } from "@/themes/globalStyles/externalStyles";
+import { getGlobalExternalStylesheets } from "@/themes/globalStyles/externalStyles";
+import { brandThemeSetting } from "@/lib/instanceSettings";
+import { forumTypeSetting } from "@/lib/forumTypeUtils";
 
 // These exist as a client component to avoid the RSC rehydration protocol
 // putting them into the initial streamed response chunk twice.
@@ -18,7 +20,7 @@ const SharedScriptsInner = () => {
     AlignmentForum: getInstanceSettings('AlignmentForum').public,
   };
   return (<>
-      {globalExternalStylesheets.map(stylesheet => <link key={stylesheet} rel="stylesheet" type="text/css" href={stylesheet}/>)}
+      {getGlobalExternalStylesheets(brandThemeSetting.get(forumTypeSetting.get())).map(stylesheet => <link key={stylesheet} rel="stylesheet" type="text/css" href={stylesheet}/>)}
       <script dangerouslySetInnerHTML={{__html: `window.publicInstanceSettings = ${toEmbeddableJson(publicInstanceSettings)}`}}/>
       <script dangerouslySetInnerHTML={{__html: getEmbeddedStyleLoaderScript()}}/>
       <script dangerouslySetInnerHTML={{__html: getSsrInjectedGraphqlLoaderScript()}}/>

@@ -4,9 +4,8 @@ import { useCurrentUserId } from '../withUser';
 import TabNavigationItem, { iconWidth } from './TabNavigationItem'
 
 // -- See here for all the tab content --
-import getMenuTabs from './menuTabs'
+import { getVisibleMenuTabs } from './menuTabs'
 import { AnalyticsContext, useTracking } from "../../../lib/analyticsEvents";
-import { forumSelect } from '../../../lib/forumTypeUtils';
 import classNames from 'classnames';
 import EventsList from './EventsList';
 import { SubscribeWidget } from '../SubscribeWidget';
@@ -65,7 +64,7 @@ const TabNavigationMenu = ({ onClickSection, transparentBackground, iconOnlyNavi
     onClickSection && onClickSection(e)
   }
 
-  const tabs = forumSelect(getMenuTabs(), forumType);
+  const tabs = getVisibleMenuTabs(forumType);
   const filteredTabs = iconOnly
     ? tabs.filter(tab => {
       if ('customComponentName' in tab) return false

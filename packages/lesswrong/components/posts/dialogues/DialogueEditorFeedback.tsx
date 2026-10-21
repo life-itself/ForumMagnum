@@ -2,7 +2,7 @@ import { useForumType } from '@/components/hooks/useForumType';
 import React, { useState } from 'react';
 import Button from '@/lib/vendor/@material-ui/core/src/Button';
 import { useCurrentUser } from '../../common/withUser';
-import { forumTitleSetting } from '../../../lib/instanceSettings';
+import { forumTitleSetting, intercomAppIdSetting } from '../../../lib/instanceSettings';
 import { getSiteUrl } from "../../../lib/vulcan-lib/utils";
 import { defineStyles } from '@/components/hooks/defineStyles';
 import { useStyles } from '@/components/hooks/useStyles';
@@ -34,6 +34,11 @@ export const DialogueEditorFeedback = ({post}: {
   const classes = useStyles(styles);
   const [clickState, setClickState] = useState<ClickState>('unclicked');
   const user = useCurrentUser()
+
+  // Feedback requests go through Intercom, so there's nothing to show without it
+  if (!intercomAppIdSetting.get(forumType)) {
+    return null;
+  }
 
   return <div className={classes.root}>
     <div className={classes.feedbackRow}>{clickState === 'unclicked'

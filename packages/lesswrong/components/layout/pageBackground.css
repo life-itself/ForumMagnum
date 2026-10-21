@@ -61,3 +61,40 @@ body.creamBackground.theme-dark {
     background: #262626;
   }
 }
+
+/*
+ * Seeds of Renaissance brand theme (brandTheme: "seedsOfRenaissance"); the
+ * seedsBrand class is set in <PageBackgroundWrapper>. Colours are the design
+ * system's --paper, --white and --night tokens; see
+ * themes/brandThemes/seedsOfRenaissanceTheme.ts.
+ */
+body.seedsBrand.greyBackground.theme-default,
+body.seedsBrand.creamBackground.theme-default {
+  background: #fbfaf6;
+}
+body.seedsBrand.whiteBackground.theme-default {
+  background: #ffffff;
+}
+body.seedsBrand.creamBackground.theme-default header {
+  background-color: #fbfaf6 !important;
+}
+body.seedsBrand.theme-dark {
+  background: #171613;
+}
+@media (prefers-color-scheme: light) {
+  body.seedsBrand.greyBackground.theme-auto,
+  body.seedsBrand.creamBackground.theme-auto {
+    background: #fbfaf6;
+  }
+  body.seedsBrand.whiteBackground.theme-auto {
+    background: #ffffff;
+  }
+  body.seedsBrand.creamBackground.theme-auto header {
+    background-color: #fbfaf6 !important;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  body.seedsBrand.theme-auto {
+    background: #171613;
+  }
+}

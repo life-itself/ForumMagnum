@@ -2,7 +2,7 @@ import { getForumType, ThemeOptions } from './themeNames';
 import { baseTheme } from './createThemeDefaults';
 import { getUserTheme } from './userThemes/index';
 import { getSiteTheme } from './siteThemes';
-import type { ForumTypeString } from '../lib/instanceSettings';
+import { brandThemeSetting, type ForumTypeString } from '../lib/instanceSettings';
 import deepmerge from 'deepmerge';
 import createBreakpoints from "@/lib/vendor/@material-ui/core/src/styles/createBreakpoints";
 
@@ -18,7 +18,7 @@ const themeCache = new Map<string,ThemeType>();
 // will be a memory leak on every pageload.
 export const getForumTheme = (themeOptions: ThemeOptions, requestForumType: ForumTypeString): ThemeType => {
   const forumType = getForumType(themeOptions, requestForumType);
-  const themeCacheKey = `${forumType}/${themeOptions.name}`;
+  const themeCacheKey = `${forumType}/${brandThemeSetting.get(forumType) ?? ''}/${themeOptions.name}`;
   
   if (!themeCache.has(themeCacheKey)) {
     const siteTheme = getSiteTheme(forumType);
