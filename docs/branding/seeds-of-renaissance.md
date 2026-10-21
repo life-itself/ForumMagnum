@@ -29,8 +29,8 @@ For coding agents, the design system recommends:
 | Names, tagline, header | `title`, `tagline`, `siteNameWithArticle`, `forumSettings.*` in `stage1Lw.ts` |
 | Hidden navigation | `forumSettings.hiddenMenuTabs` (tab ids from `menuTabs.tsx`) |
 | LW background art | `forumSettings.showLWBackgroundImage: false` |
-| Intercom | `intercomAppId: ""` (disabled) |
-| Content link underline | `link.underline` in the brand palette, read in `themes/stylePiping.ts` |
+| Intercom | `intercomAppId: ""` (disabled); `PostSubmit` and `DialogueEditorFeedback` hide their feedback buttons without an app ID |
+| Link underline | `link.underline` in the brand palette, read in `themes/stylePiping.ts` (content) and `themes/globalStyles/globalStyles.ts` (links in `p`/`aside` UI text) |
 
 `stage1Lw.ts` merges `sharedSettings` over its own values. Brand keys that
 `sharedSettings` also sets (`logoUrl`, `siteImage`, `intercomAppId`) are therefore applied
@@ -59,7 +59,9 @@ text on `primary.main`, so a chalk fill would be unreadable, and changing those 
 components would conflict with upstream.
 
 Links in post and comment bodies are ink, so they are underlined (1px, offset 3px, as the
-design system's `.link`) through the `link.underline` palette flag. On narrow screens the
+design system's `.link`) through the `link.underline` palette flag. The same flag underlines
+links in running UI text (`p` and `aside`, which `Typography` body2 renders as), since many
+LessWrong components colour links with `primary.main`, which is ink in light mode. On narrow screens the
 header shows the mark alone in place of the short title.
 
 All pairs in use meet WCAG AA. The lowest is muted on paper at 6.8:1. The logo red
