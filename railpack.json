@@ -15,6 +15,7 @@
       "commands": [
         "npm rebuild bcrypt",
         "cd ckEditor && yarn install --frozen-lockfile --ignore-scripts --ignore-optional && yarn build",
+        "cd excalidraw && yarn install --frozen-lockfile --production=false && yarn build",
         "ENV_NAME=stage1Lw FORUM_TYPE=LessWrong PG_URL=\"$PG_URL_BUILD\" yarn generate",
         "ENV_NAME=stage1Lw FORUM_TYPE=LessWrong PG_URL=\"$PG_URL_BUILD\" ./node_modules/.bin/next build"
       ]
