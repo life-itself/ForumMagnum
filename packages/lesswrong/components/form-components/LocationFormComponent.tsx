@@ -124,7 +124,7 @@ export const useGoogleMaps = (): [boolean, any] => {
         });
       }
       
-      if (mapsLoadingState === "unloaded") {
+      if (mapsLoadingState === "unloaded" && mapsAPIKey) {
         mapsLoadingState = "loading";
         
         var tag = document.createElement('script');

@@ -271,8 +271,8 @@ module.exports = isE2E ? module.exports : withSentryConfig(
     // For all available options, see:
     // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
-    org: "lesswrong",
-    project: "lesswrong",
+    org: process.env.SENTRY_ORG ?? "lesswrong",
+    project: process.env.SENTRY_PROJECT ?? "lesswrong",
 
     // Only print logs for uploading source maps in CI
     silent: !process.env.CI,

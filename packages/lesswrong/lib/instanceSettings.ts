@@ -272,8 +272,21 @@ export const accessTokenSecretSetting = new PublicInstanceSetting<string | null>
   Public Database Settings
 */
 
-export const googleTagManagerId: string = "GTM-TRC765W"; // Google Tag Manager ID
-export const reCaptchaSiteKey: string = "6LfFgqEUAAAAAHKdMgzGO-1BRBhHw1x6_8Ly1cXc"; // ReCaptcha API Key
+/**
+ * Lets a deployment override a hard-coded third-party key with a NEXT_PUBLIC_*
+ * env var. Unset keeps the upstream default; "" or "none" disables the service.
+ * Callers must read `process.env.NEXT_PUBLIC_...` literally so that Next.js
+ * inlines it into the client bundle.
+ */
+function getPublicEnvOverride(value: string | undefined, upstreamDefault: string): string {
+  if (value === undefined) {
+    return upstreamDefault;
+  }
+  return value === "none" ? "" : value;
+}
+
+export const googleTagManagerId: string = getPublicEnvOverride(process.env.NEXT_PUBLIC_GTM_ID, "GTM-TRC765W"); // Google Tag Manager ID
+export const reCaptchaSiteKey: string = getPublicEnvOverride(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, "6LfFgqEUAAAAAHKdMgzGO-1BRBhHw1x6_8Ly1cXc"); // ReCaptcha API Key
 // Despite the name, this setting is also used to set the index prefix for Elasticsearch for legacy reasons
 export const algoliaIndexPrefix: string = "test_";
 
@@ -362,7 +375,7 @@ export const lightconeFundraiserActive = new PublicInstanceSetting<boolean>('lig
 export const postsListViewTypeSetting = new PublicInstanceSetting<string>('posts.viewType', 'list', "optional");
 export const quickTakesMaxAgeDaysSetting = new PublicInstanceSetting<number>('feed.quickTakesMaxAgeDays', 5, "optional");
 
-export const mapsAPIKey: string = "AIzaSyA3C48rl26gynG3qIuNuS-3Bh_Zz9jFXkY";
+export const mapsAPIKey: string = getPublicEnvOverride(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, "AIzaSyA3C48rl26gynG3qIuNuS-3Bh_Zz9jFXkY");
 
 export const siteImageSetting = new PublicInstanceSetting<string>('siteImage', 'https://res.cloudinary.com/lesswrong-2-0/image/upload/v1654295382/new_mississippi_river_fjdmww.jpg', "optional"); // An image used to represent the site on social media
 
