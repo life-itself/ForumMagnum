@@ -34,10 +34,12 @@ class ElasticClient {
     }
 
     const cloudId = process.env.private_elasticsearch_cloudId;
+    // Lets a deployment use a self-hosted Elasticsearch server instead of Elastic Cloud
+    const node = process.env.private_elasticsearch_node;
     const username = process.env.private_elasticsearch_username;
     const password = process.env.private_elasticsearch_password;
 
-    if (!cloudId || !username || !password) {
+    if (!(cloudId || node) || !username || !password) {
       // eslint-disable-next-line no-console
       console.warn("Elastic is enabled, but credentials are missing");
       return;
@@ -46,7 +48,7 @@ class ElasticClient {
     if (!globalClient) {
       globalClient = new Client({
         requestTimeout: 600000,
-        cloud: {id: cloudId},
+        ...(cloudId ? {cloud: {id: cloudId}} : {node}),
         auth: {
           username,
           password,
