@@ -93,9 +93,21 @@ const stage1LwSettings = merge({
 }, sharedSettings);
 
 // sharedSettings wins the merge above, so keys it also sets (LessWrong's logo,
-// social image and Intercom app) must be overridden afterwards.
+// social image, Intercom app and Cloudinary presets) must be overridden afterwards.
 export const stage1Lw = merge(stage1LwSettings, {
   logoUrl: `${siteUrl}${brandAssetsPath}/seeds-mark-colour-512.png`,
   siteImage: `${siteUrl}${brandAssetsPath}/seeds-mark-colour-512.png`,
   intercomAppId: "",
+  // Unsigned upload presets in the Seeds Cloudinary account, whose cloud name is
+  // set by the NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME env var
+  cloudinary: {
+    uploadPresetEditor: "seeds_editor",
+    uploadPresetBanner: "seeds_banner",
+    uploadPresetGridImage: "seeds_grid_image",
+    uploadPresetSocialPreview: "seeds_social_preview",
+    uploadPresetProfile: "seeds_profile",
+    uploadPresetSpotlight: null,
+  },
+  // LessWrong's default banner is an image in LessWrong's Cloudinary account
+  defaultSequenceBannerId: null,
 });
