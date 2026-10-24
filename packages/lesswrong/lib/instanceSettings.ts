@@ -281,7 +281,7 @@ export const ckEditorUploadUrlSetting = new PublicInstanceSetting<string | null>
 export const ckEditorWebsocketUrlSetting = new PublicInstanceSetting<string | null>('ckEditor.webSocketUrl', null, "optional"); // Websocket URL for CKEditor (for collaboration)
 
 export const hideUnreviewedAuthorCommentsSettings = new PublicInstanceSetting<string | null>('hideUnreviewedAuthorComments', null, "optional"); // Hide comments by unreviewed authors after date provided (prevents spam / flaming / makes moderation easier, but delays new user engagement)
-export const cloudinaryCloudName: string = "lesswrong-2-0"; // Cloud name for cloudinary hosting
+export const cloudinaryCloudName: string = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "lesswrong-2-0"; // Cloud name for cloudinary hosting
 
 export const nofollowKarmaThreshold = new PublicInstanceSetting<number>('nofollowKarmaThreshold', 10, "optional"); // Users with less than this much karma have their links marked as nofollow
 
