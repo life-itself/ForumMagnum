@@ -46,7 +46,6 @@ const stage1LwSettings = merge({
   },
   testServer: process.env.TEST_SERVER !== "false",
   debug: false,
-  disableElastic: true,
   fmCrosspost: { siteName: "the EA Forum", baseUrl: "https://forum.effectivealtruism.org/" },
   allowTypeIIIPlayer: false,
   hasRejectedContentSection: true,
@@ -110,4 +109,13 @@ export const stage1Lw = merge(stage1LwSettings, {
   },
   // LessWrong's default banner is an image in LessWrong's Cloudinary account
   defaultSequenceBannerId: null,
+  // Turn off LessWrong's third-party accounts. Sentry, Google Tag Manager,
+  // reCaptcha and Google Maps are configured with NEXT_PUBLIC_* env vars instead
+  // (see instanceSettings.ts and the sentry.*.config files).
+  mapbox: { apiKey: null },
+  stripe: { publicKey: null },
+  logRocket: { apiKey: null },
+  ckEditor: { uploadUrl: null, webSocketUrl: null },
+  recombee: { enabled: false },
+  petrov: { petrovServerUrl: null },
 });

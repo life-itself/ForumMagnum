@@ -23,7 +23,7 @@ let reCaptchaInitialized = false;
  * but it will still work outside GDPR countries at least.
  */
 export async function initReCaptcha() {
-  if (isServer || reCaptchaInitialized) {
+  if (isServer || reCaptchaInitialized || !reCaptchaSiteKey) {
     return;
   }
 
