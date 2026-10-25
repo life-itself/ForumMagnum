@@ -39,14 +39,23 @@ const stage1LwSettings = merge({
       "hpmor",
       "lwAlbum",
       "leaderboard",
+      // The Community section is built around LessWrong's meetup groups
+      "events",
+      "eventsList",
     ],
+  },
+  // The migrated Discourse posts are older than the default 90-day cutoff, which
+  // left the home page feed empty
+  frontpageAlgorithm: {
+    daysAgoCutoff: 3650,
   },
   analytics: {
     environment: "stage1",
   },
   testServer: process.env.TEST_SERVER !== "false",
   debug: false,
-  fmCrosspost: { siteName: "the EA Forum", baseUrl: "https://forum.effectivealtruism.org/" },
+  // No crossposting to the EA Forum
+  fmCrosspost: { siteName: null, baseUrl: null },
   allowTypeIIIPlayer: false,
   hasRejectedContentSection: true,
   hasCuratedPosts: true,
@@ -93,8 +102,16 @@ const stage1LwSettings = merge({
 
 // sharedSettings wins the merge above, so keys it also sets (LessWrong's logo,
 // social image, Intercom app and Cloudinary presets) must be overridden afterwards.
-export const stage1Lw = merge(stage1LwSettings, {
-  logoUrl: `${siteUrl}${brandAssetsPath}/seeds-mark-colour-512.png`,
+const mergedSettings = merge(stage1LwSettings, {
+  // Sends automated moderation messages. The email is only used if the account
+  // has to be created, and this setting is public.
+  adminAccount: {
+    _id: "CLZ2dgmWwYbBgAqMY",
+    username: "taylortest",
+    email: "support@nextwavedev.org",
+  },
+  moderationEmail: "support@nextwavedev.org",
+  logoUrl:`${siteUrl}${brandAssetsPath}/seeds-mark-colour-512.png`,
   siteImage: `${siteUrl}${brandAssetsPath}/seeds-mark-colour-512.png`,
   intercomAppId: "",
   // Unsigned upload presets in the Seeds Cloudinary account, whose cloud name is
@@ -118,4 +135,15 @@ export const stage1Lw = merge(stage1LwSettings, {
   ckEditor: { uploadUrl: null, webSocketUrl: null },
   recombee: { enabled: false },
   petrov: { petrovServerUrl: null },
+});
+
+// merge() can't empty a list or map that sharedSettings sets, so these replace
+// LessWrong's values outright.
+export const stage1Lw = Object.assign(mergedSettings, {
+  // LessWrong user IDs with access to the paid AI chat; admins still see it
+  llmChat: { userIds: [] },
+  // LessWrong's tag IDs for the default home feed filters
+  defaultVisibilityTags: [],
+  // LessWrong's hidden joke text replacements
+  textReplacements: {},
 });
