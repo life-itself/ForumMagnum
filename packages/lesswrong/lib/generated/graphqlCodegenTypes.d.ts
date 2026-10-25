@@ -21320,25 +21320,6 @@ type multiSunshineCurationPostsListQueryQueryVariables = Exact<{
 
 type multiSunshineCurationPostsListQueryQuery = multiSunshineCurationPostsListQueryQuery_Query;
 
-type multiGoogleServiceAccountSessionSunshineGoogleServiceAccountQueryQuery_googleServiceAccountSessions_MultiGoogleServiceAccountSessionOutput_results_GoogleServiceAccountSession = (
-  { __typename?: 'GoogleServiceAccountSession' }
-  & GoogleServiceAccountSessionAdminInfo
-);
-
-type multiGoogleServiceAccountSessionSunshineGoogleServiceAccountQueryQuery_googleServiceAccountSessions_MultiGoogleServiceAccountSessionOutput = { __typename?: 'MultiGoogleServiceAccountSessionOutput', totalCount: number | null, results: Array<multiGoogleServiceAccountSessionSunshineGoogleServiceAccountQueryQuery_googleServiceAccountSessions_MultiGoogleServiceAccountSessionOutput_results_GoogleServiceAccountSession> };
-
-type multiGoogleServiceAccountSessionSunshineGoogleServiceAccountQueryQuery_Query = { __typename?: 'Query', googleServiceAccountSessions: multiGoogleServiceAccountSessionSunshineGoogleServiceAccountQueryQuery_googleServiceAccountSessions_MultiGoogleServiceAccountSessionOutput | null };
-
-
-type multiGoogleServiceAccountSessionSunshineGoogleServiceAccountQueryQueryVariables = Exact<{
-  selector: InputMaybe<GoogleServiceAccountSessionSelector>;
-  limit: InputMaybe<Scalars['Int']['input']>;
-  enableTotal: InputMaybe<Scalars['Boolean']['input']>;
-}>;
-
-
-type multiGoogleServiceAccountSessionSunshineGoogleServiceAccountQueryQuery = multiGoogleServiceAccountSessionSunshineGoogleServiceAccountQueryQuery_Query;
-
 type updateCommentSunshineNewCommentsItemMutation_updateComment_CommentOutput_data_Comment = (
   { __typename?: 'Comment' }
   & CommentsListWithParentMetadata
