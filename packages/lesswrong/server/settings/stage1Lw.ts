@@ -17,9 +17,10 @@ const stage1LwSettings = merge({
     environment: "stage1",
     release: null,
   },
-  aboutPostId: "bJ2haLkcGeLtTWaD5",
-  faqPostId: "2rWKkWuPrgTMpLRbp",
-  contactPostId: "ehcYkvyz7dh9L7Wt8",
+  // Placeholder posts (unlisted), created by scripts/createSeedsPlaceholderPages.ts
+  aboutPostId: "reavZJCFXrh6tL7HD",
+  faqPostId: "3Qe8vaaKY6TRviapr",
+  contactPostId: "GPg4NcPdLJgBLSrNd",
   faviconUrl: `${brandAssetsPath}/favicon.ico`,
   // The design system has no badged favicon variant
   faviconWithBadge: `${brandAssetsPath}/favicon.ico`,
