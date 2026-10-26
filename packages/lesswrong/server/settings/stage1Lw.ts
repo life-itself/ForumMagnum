@@ -31,6 +31,8 @@ const stage1LwSettings = merge({
     headerLogoUrl: `${brandAssetsPath}/seeds-mark-colour-64.png`,
     headerLogoDarkUrl: `${brandAssetsPath}/seeds-mark-colour-dark-64.png`,
     showLWBackgroundImage: false,
+    // The poke invites users to LessWrong meetups
+    showMeetupsPoke: false,
     hiddenMenuTabs: [
       "library",
       "bestoflesswrong",
