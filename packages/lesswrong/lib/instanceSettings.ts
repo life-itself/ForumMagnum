@@ -235,6 +235,8 @@ export const forumHeaderLogoDarkUrlSetting = new PublicInstanceSetting<string | 
 export const hiddenMenuTabsSetting = new PublicInstanceSetting<string[]>('forumSettings.hiddenMenuTabs', [], "optional");
 /** Whether to show LessWrong's decorative background art beside the main column */
 export const showLWBackgroundImageSetting = new PublicInstanceSetting<boolean>('forumSettings.showLWBackgroundImage', true, "optional");
+/** Whether Recent Discussion suggests subscribing to LessWrong meetup notifications */
+export const showMeetupsPokeSetting = new PublicInstanceSetting<boolean>('forumSettings.showMeetupsPoke', true, "optional");
 
 export type BrandThemeName = "seedsOfRenaissance";
 /**

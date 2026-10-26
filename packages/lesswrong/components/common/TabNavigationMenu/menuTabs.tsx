@@ -2,7 +2,7 @@ import React from 'react';
 import { getCommunityPath, getAllTagsPath } from '@/lib/pathConstants';
 import { REVIEW_YEAR } from '../../../lib/reviewUtils';
 import { ForumOptions, forumSelect } from '../../../lib/forumTypeUtils';
-import { forumTitleSetting, hiddenMenuTabsSetting, type ForumTypeString } from '@/lib/instanceSettings';
+import { brandThemeSetting, forumTitleSetting, hiddenMenuTabsSetting, type ForumTypeString } from '@/lib/instanceSettings';
 
 import { compassIcon } from '../../icons/compassIcon';
 import { questionsGlobeIcon } from '../../icons/questionsGlobeIcon';
@@ -87,7 +87,8 @@ export const getMenuTabs = (): ForumOptions<Array<MenuTab>> => ({
       id: 'home',
       title: 'Home',
       link: '/',
-      icon: compassIcon,
+      // The compass is LessWrong's logo mark
+      ...(brandThemeSetting.get('LessWrong') === 'seedsOfRenaissance' ? { iconComponent: Home } : { icon: compassIcon }),
       tooltip: 'Latest posts, comments and curated content.',
       showOnMobileStandalone: true,
       showOnCompressed: true,

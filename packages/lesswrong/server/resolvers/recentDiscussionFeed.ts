@@ -3,6 +3,7 @@ import { Posts } from '../../server/collections/posts/collection';
 import { Tags } from '../../server/collections/tags/collection';
 import { Revisions } from '../../server/collections/revisions/collection';
 import { viewFieldAllowAny } from '@/lib/utils/viewConstants';
+import { showMeetupsPokeSetting } from '@/lib/instanceSettings';
 import gql from 'graphql-tag';
 
 export const recentDiscussionFeedGraphQLTypeDefs = gql`
@@ -43,7 +44,7 @@ export const recentDiscussionFeedGraphQLQueries = {
     type SortKeyType = Date;
     const {currentUser} = context;
 
-    const shouldSuggestMeetupSubscription = currentUser && !currentUser.nearbyEventsNotifications && !currentUser.hideMeetupsPoke; //TODO: Check some more fields
+    const shouldSuggestMeetupSubscription = showMeetupsPokeSetting.get(context) && currentUser && !currentUser.nearbyEventsNotifications && !currentUser.hideMeetupsPoke; //TODO: Check some more fields
     const postCommentedEventsCriteria = {$or: [{isEvent: false}, {globalEvent: true}, {commentCount: {$gt: 0}}]}
 
     const postSelector: MongoSelector<DbPost> = {
