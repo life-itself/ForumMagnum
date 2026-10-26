@@ -19,6 +19,8 @@ import PostsListSettings from "./PostsListSettings";
 import AllPostsList from "./AllPostsList";
 import { defineStyles } from '@/components/hooks/defineStyles';
 import { useStyles } from '@/components/hooks/useStyles';
+import { useForumType } from '@/components/hooks/useForumType';
+import { allPostsDefaultTimeframeSetting } from '@/lib/instanceSettings';
 
 const styles = defineStyles("AllPostsPage", (theme: ThemeType) => ({
   title: {
@@ -69,6 +71,7 @@ const AllPostsPage = ({defaultHideSettings}: {defaultHideSettings?: boolean}) =>
   const updateCurrentUser = useUpdateCurrentUser();
   const {query} = useLocation();
   const {captureEvent} = useTracking();
+  const {forumType} = useForumType();
 
   const [showSettings, setShowSettings] = useState<boolean>(defaultHideSettings ? false : !!currentUser?.allPostsOpenSettings);
 
@@ -86,7 +89,7 @@ const AllPostsPage = ({defaultHideSettings}: {defaultHideSettings?: boolean}) =>
     }
   }, [showSettings, captureEvent, currentUser, updateCurrentUser]);
 
-  const currentTimeframe = query.timeframe || currentUser?.allPostsTimeframe || 'daily';
+  const currentTimeframe = query.timeframe || currentUser?.allPostsTimeframe || allPostsDefaultTimeframeSetting.get(forumType);
   const currentSorting = (query.sortedBy   || currentUser?.allPostsSorting   || 'magic') as PostSortingMode;
   const currentFilter = query.filter       || currentUser?.allPostsFilter    || 'all';
   const currentShowLowKarma = (parseInt(query.karmaThreshold) === MAX_LOW_KARMA_THRESHOLD) ||

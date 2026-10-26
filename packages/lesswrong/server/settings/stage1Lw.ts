@@ -33,6 +33,8 @@ const stage1LwSettings = merge({
     showLWBackgroundImage: false,
     // The poke invites users to LessWrong meetups
     showMeetupsPoke: false,
+    // The default daily view starts at today, which is empty for the migrated posts
+    allPostsDefaultTimeframe: "allTime",
     hiddenMenuTabs: [
       "library",
       "bestoflesswrong",
