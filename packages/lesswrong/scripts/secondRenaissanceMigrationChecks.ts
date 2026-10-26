@@ -114,6 +114,12 @@ function groupBy<T, K>(items: T[], getKey: (item: T) => K): Map<K, T[]> {
   return groups;
 }
 
+/** The Discourse name, or the username if the name is empty or an email address */
+export function getExpectedDisplayName(user: SourceUser): string {
+  const name = user.name?.trim();
+  return name && !EMAIL_PATTERN.test(name) ? name : user.username;
+}
+
 function checkUsers(source: SourceData, target: TargetData, problems: string[]): Map<number, string> {
   const targetByDiscourseId = groupBy(target.users, u => u.discourseUserId);
   const userIdMap = new Map<number, string>();
@@ -125,7 +131,7 @@ function checkUsers(source: SourceData, target: TargetData, problems: string[]):
     }
     const [user] = matches;
     userIdMap.set(sourceUser.id, user._id);
-    const expectedName = sourceUser.name?.trim() || sourceUser.username;
+    const expectedName = getExpectedDisplayName(sourceUser);
     if (user.displayName !== expectedName) {
       problems.push(`User ${sourceUser.username}: display name is "${user.displayName}", expected "${expectedName}"`);
     }

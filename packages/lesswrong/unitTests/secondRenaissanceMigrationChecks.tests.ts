@@ -132,6 +132,12 @@ describe('checkSecondRenaissanceMigration', () => {
     expect(getProblems(target, source)).toContainEqual(expect.stringMatching(/userBob .*email address \(PRIVACY\)/));
   });
 
+  it('expects the username when the Discourse name is an email address', () => {
+    const source = makeSource();
+    source.users[2] = { ...source.users[2], name: "bob@example.com" };
+    expect(getProblems(makeTarget(), source)).toEqual([]);
+  });
+
   it('does not expect hidden posts to be migrated', () => {
     const source = makeSource();
     source.posts[4] = { ...source.posts[4], hidden: true };
