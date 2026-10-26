@@ -33,8 +33,9 @@ export function getSourceUrl(): string {
   const raw = process.env.DISCOURSE_SOURCE_URL;
   if (!raw) throw new Error("DISCOURSE_SOURCE_URL is required");
   const url = new URL(raw);
-  if (!["localhost", "127.0.0.1"].includes(url.hostname) || url.pathname !== "/discourse_backup") {
-    throw new Error("DISCOURSE_SOURCE_URL must point at the local discourse_backup database");
+  // Restored backups are named discourse_backup, discourse_backup_2026, etc.
+  if (!["localhost", "127.0.0.1"].includes(url.hostname) || !/^\/discourse_backup\w*$/.test(url.pathname)) {
+    throw new Error("DISCOURSE_SOURCE_URL must point at a local discourse_backup* database");
   }
   return raw;
 }

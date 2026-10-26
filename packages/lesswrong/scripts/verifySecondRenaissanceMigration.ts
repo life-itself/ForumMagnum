@@ -32,10 +32,11 @@ async function loadSource(): Promise<SourceData> {
         FROM users
         WHERE id > 0 OR id = -1
       `);
+      // Discourse sets read_restricted on categories that "everyone" can't see.
+      // Categories that only limit who can post (like Meta) stay public.
       const topics = await t.any(`
         SELECT t.id, t.title, t.archetype, t.visible, t.category_id AS "categoryId",
-          COALESCE(c.read_restricted, FALSE)
-            OR EXISTS (SELECT 1 FROM category_groups cg WHERE cg.category_id = t.category_id) AS restricted
+          COALESCE(c.read_restricted, FALSE) AS restricted
         FROM topics t
         LEFT JOIN categories c ON c.id = t.category_id
         WHERE t.deleted_at IS NULL
