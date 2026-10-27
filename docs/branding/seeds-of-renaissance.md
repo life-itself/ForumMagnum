@@ -9,7 +9,7 @@ is unchanged.
 The Seeds of Renaissance design system: https://design.seedsofrenaissance.org/
 (repo `life-itself/design`, `projects/sor-design-system/`, v0.1). The values here come from
 `system/tokens.css` at commit `3008c99b97c70a074706778dc7879b82d4b21b46`. Do not add colours
-or fonts that aren't tokens there.
+that aren't tokens there. Fonts are LessWrong's, not the design system's (see Fonts below).
 
 For coding agents, the design system recommends:
 
@@ -22,13 +22,13 @@ For coding agents, the design system recommends:
 | Piece | Where |
 |---|---|
 | Brand switch | `brandTheme: "seedsOfRenaissance"` in `packages/lesswrong/server/settings/stage1Lw.ts` |
-| Palette and typography | `packages/lesswrong/themes/brandThemes/seedsOfRenaissanceTheme.ts`, selected in `themes/siteThemes.ts` |
-| Fonts | Google Fonts URL from the design system's website guide, loaded through `themes/globalStyles/externalStyles.ts` in place of LessWrong's Typekit kits |
+| Palette | `packages/lesswrong/themes/brandThemes/seedsOfRenaissanceTheme.ts`, selected in `themes/siteThemes.ts` |
+| Fonts | LessWrong's font stacks; `themes/globalStyles/externalStyles.ts` skips LessWrong's domain-restricted Typekit kits |
 | Page background | `body.seedsBrand` rules in `components/layout/pageBackground.css` |
 | Logo, favicon, OG image | `public/brand/seeds-of-renaissance/`, unmodified copies of `system/logo/` assets |
 | Names, tagline, header | `title`, `tagline`, `siteNameWithArticle`, `forumSettings.*` in `stage1Lw.ts` |
 | Hidden navigation | `forumSettings.hiddenMenuTabs` (tab ids from `menuTabs.tsx`) |
-| LW background art | `forumSettings.showLWBackgroundImage: false` |
+| Background art | `forumSettings.backgroundImageUrl` / `backgroundImageDarkUrl`: the design system's seed spiral (`public/brand/seeds-of-renaissance/seed-spiral*.svg`, from the sprite's `c-spiral`, rights: ours), replacing LessWrong's art and seasonal banners in `LWBackgroundImage.tsx` |
 | Intercom | `intercomAppId: ""` (disabled); `PostSubmit` and `DialogueEditorFeedback` hide their feedback buttons without an app ID |
 | Link underline | `link.underline` in the brand palette, read in `themes/stylePiping.ts` (content) and `themes/globalStyles/globalStyles.ts` (links in `p`/`aside` UI text) |
 
@@ -48,9 +48,19 @@ in a second merge after it.
 | `--chalk` | `#ece7dc` | text, links (dark mode) |
 | `--night-muted` | `#a49e93` | secondary text (dark mode); `primary.light`/`secondary.light` fills and marks (light) |
 | `--night-rule` | `#38342e` | active tab fill (dark mode; `TabButton` always uses white text) |
-| `--font-body` | Bricolage Grotesque | UI, post and comment bodies |
-| `--font-display` fallback | Fraunces | header name, post page titles only |
-| `--font-label` fallback | Hanken Grotesk | buttons |
+
+## Fonts
+
+Issue #45 switched from the design system's fonts (Bricolage Grotesque, Fraunces, Hanken
+Grotesk) to LessWrong's typography, which was preferred for reading. LessWrong's own faces
+(Warnock Pro, Gill Sans Nova) come from Typekit kits licensed to LessWrong's domains, so they
+aren't loaded. LessWrong's font stacks then fall back to:
+
+| Use | Font |
+|---|---|
+| Post titles | ET Book (free; LessWrong's self-hosted copy, declared in `Layout.tsx`) |
+| Post and comment bodies | Palatino (macOS), Palatino Linotype or Book Antiqua (Windows), then Georgia |
+| UI text | Calibri (Windows, Office), Gill Sans (macOS), then Helvetica or Arial |
 
 The design system has no dark mode ("night is a section, not a theme"). Users can still pick
 dark mode, which uses the night tokens for backgrounds, text and links. Buttons and other
@@ -73,15 +83,14 @@ All pairs in use meet WCAG AA. The lowest is muted on paper at 6.8:1. The logo r
 
 ## Deliberately not used yet
 
-- **Polyamine and Restora** (display faces) are commercial and not yet licensed. Fraunces is the
-  design system's sanctioned fallback.
+- **The design system's fonts** (see Fonts above). Polyamine and Restora (display faces) are
+  also commercial and not yet licensed.
 - **Wordmark and lockup logos** set the name in Polyamine, so they need that licence before
   public use. The header uses the swallow mark plus the text name.
-- **Apfel Grotezk** (OFL) is embedded in the design system's `fonts.css`. Hanken Grotesk stands
-  in until it is self-hosted.
 - **`components.css` and `tokens.css`** are not linked. Their global `.sor` styles would
   conflict with ForumMagnum's JSS, so values are copied into the theme instead.
-- **Photography and graphics sets**: everything except the woodcuts and sprite is uncleared.
+- **Photography and graphics sets**: everything except the woodcuts and sprite is uncleared, so
+  the background art uses the sprite's seed spiral.
 
 ## Follow-ups
 

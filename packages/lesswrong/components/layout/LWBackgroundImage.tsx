@@ -1,5 +1,6 @@
 import { useForumType } from '@/components/hooks/useForumType';
 import React from 'react';
+import classNames from 'classnames';
 import { registerComponent } from '@/lib/vulcan-lib/components';
 import { defineStyles, useStyles } from '@/components/hooks/useStyles';
 import CloudinaryImage2 from "@/components/common/CloudinaryImage2";
@@ -14,6 +15,7 @@ import { useCurrentTime } from '@/lib/utils/timeUtil';
 import { Link } from '@/lib/reactRouterWrapper';
 import { usePrerenderablePathname } from '../next/usePrerenderablePathname';
 import PetrovDayStory from '../seasonal/petrovDay/petrov-day-story/PetrovDayStory';
+import { backgroundImageDarkUrlSetting, backgroundImageUrlSetting } from '@/lib/instanceSettings';
 import { useIsPetrovDayRitualActive } from '../seasonal/petrovDay/petrov-day-story/useIsPetrovDayRitualActive';
 
 function useIsInkhaven2026Active(): boolean {
@@ -51,6 +53,24 @@ const styles = defineStyles("LWBackgroundImage", (theme: ThemeType) => ({
     [theme.breakpoints.up(2000)]: {
       right: '0px',
     }
+  },
+  // Like LessWrong's art: in the top-right corner, partly past the edge, and
+  // soft enough to stay behind the content
+  customBackgroundImage: {
+    position: 'absolute',
+    top: 24,
+    right: -90,
+    width: 'min(28vw, 400px)',
+    opacity: 0.3,
+    [theme.breakpoints.up(2000)]: {
+      right: 0,
+    },
+  },
+  lightModeOnly: {
+    display: theme.dark ? 'none' : 'block',
+  },
+  darkModeOnly: {
+    display: theme.dark ? 'block' : 'none',
   },
   imageColumn: {
     position: 'absolute',
@@ -176,6 +196,18 @@ export const LWBackgroundImage = () => {
   const inkhaven2026Active = useIsInkhaven2026Active();
   const lessOnline2026 = useIsLessOnline2026Active();
   const petrovDayRitualActive = useIsPetrovDayRitualActive();
+
+  // A deployment's own art replaces LessWrong's, including its seasonal banners
+  const customImageUrl = backgroundImageUrlSetting.get(forumType);
+  if (customImageUrl) {
+    const customDarkImageUrl = backgroundImageDarkUrlSetting.get(forumType) ?? customImageUrl;
+    return <div className={classes.root}>
+      {standaloneNavigation && <div className={classes.imageColumn}>
+        <img loading="lazy" alt="" src={customImageUrl} className={classNames(classes.customBackgroundImage, classes.lightModeOnly)} />
+        <img loading="lazy" alt="" src={customDarkImageUrl} className={classNames(classes.customBackgroundImage, classes.darkModeOnly)} />
+      </div>}
+    </div>;
+  }
   if (standaloneNavigation && isHomePage) {
     if (petrovDayRitualActive) {
       homePageImage = <PetrovDayStory variant="sidebar"/>;
