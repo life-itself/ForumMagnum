@@ -7,6 +7,10 @@ import {
 const targets: DiscourseLinkTargets = {
   userPathsByUsername: new Map([["martin", "/users/discourse-import-user-13"]]),
   postPathsByTopicId: new Map([[752, "/posts/abc123/the-meaning-of-life"]]),
+  uploadUrlsByPath: new Map([
+    ["/uploads/db6903/original/1X/43a3.png", "https://res.cloudinary.com/seeds/image/upload/43a3.png"],
+    ["/uploads/short-url/5vpxF7U7.pdf", "https://res.cloudinary.com/seeds/raw/upload/report.pdf"],
+  ]),
 };
 
 const clean = (html: string) => cleanDiscourseHtml(html, targets);
@@ -30,9 +34,16 @@ describe('cleanDiscourseHtml', () => {
       .toBe("<p>Well done 🏆</p>");
   });
 
+  it('points uploaded images and attachments at Cloudinary', () => {
+    const html = clean('<p><img src="https://forum.secondrenaissance.net/uploads/db6903/original/1X/43a3.png" srcset="https://forum.secondrenaissance.net/uploads/db6903/optimized/1X/43a3_2_566x500.png 1.5x" alt="Map"> <a class="attachment" href="/uploads/short-url/5vpxF7U7.pdf">report.pdf</a></p>');
+    expect(html).toContain('src="https://res.cloudinary.com/seeds/image/upload/43a3.png"');
+    expect(html).not.toContain("srcset");
+    expect(html).toContain('href="https://res.cloudinary.com/seeds/raw/upload/report.pdf"');
+  });
+
   it('replaces a lightbox with the full-size image and drops its caption', () => {
     const html = clean(`<p><div class="lightbox-wrapper"><a class="lightbox" href="https://forum.secondrenaissance.net/uploads/db6903/original/1X/43a3.png" title="Screenshot"><img src="https://forum.secondrenaissance.net/uploads/db6903/optimized/1X/43a3_2_566x500.png" alt="Screenshot" width="566" height="500"><div class="meta"><span class="filename">image</span><span class="informations">1920×1092 149 KB</span></div></a></div></p>`);
-    expect(html).toContain('src="https://forum.secondrenaissance.net/uploads/db6903/original/1X/43a3.png"');
+    expect(html).toContain('src="https://res.cloudinary.com/seeds/image/upload/43a3.png"');
     expect(html).not.toContain("149 KB");
     expect(html).not.toContain("lightbox");
   });
