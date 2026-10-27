@@ -6,6 +6,7 @@ import { Users } from "@/server/collections/users/collection";
 import { createTag } from "@/server/collections/tags/mutations";
 import { addOrUpvoteTag } from "@/server/tagging/tagsGraphQL";
 import { computeContextFromUser } from "@/server/vulcan-lib/apollo-server/context";
+import { CATEGORY_TAGS } from "./secondRenaissanceMigrationChecks";
 
 /* eslint-disable no-console */
 
@@ -22,33 +23,19 @@ import { computeContextFromUser } from "@/server/vulcan-lib/apollo-server/contex
  * Usage: yarn repl prod lw packages/lesswrong/scripts/createSecondRenaissanceCategoryTags.ts "createSecondRenaissanceCategoryTags({ execute: true })"
  */
 
-interface CategoryTag {
-  discourseCategoryId: number
-  name: string
-  slug: string
-}
-
-// The Staff category (#3) is private and its topics weren't migrated
-const CATEGORY_TAGS: CategoryTag[] = [
-  { discourseCategoryId: 4, name: "General", slug: "general" },
-  { discourseCategoryId: 6, name: "Ideas", slug: "ideas" },
-  { discourseCategoryId: 7, name: "People and Orgs", slug: "people-and-orgs" },
-  { discourseCategoryId: 11, name: "Welcome", slug: "welcome" },
-  { discourseCategoryId: 12, name: "Events", slug: "events" },
-];
-
 interface MigratedPost {
   _id: string
   title: string
   topicId: string
 }
 
-function getSourceUrl(): string {
+export function getSourceUrl(): string {
   const raw = process.env.DISCOURSE_SOURCE_URL;
   if (!raw) throw new Error("DISCOURSE_SOURCE_URL is required");
   const url = new URL(raw);
-  if (!["localhost", "127.0.0.1"].includes(url.hostname) || url.pathname !== "/discourse_backup") {
-    throw new Error("DISCOURSE_SOURCE_URL must point at the local discourse_backup database");
+  // Restored backups are named discourse_backup, discourse_backup_2026, etc.
+  if (!["localhost", "127.0.0.1"].includes(url.hostname) || !/^\/discourse_backup\w*$/.test(url.pathname)) {
+    throw new Error("DISCOURSE_SOURCE_URL must point at a local discourse_backup* database");
   }
   return raw;
 }
