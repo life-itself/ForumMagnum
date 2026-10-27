@@ -24,9 +24,18 @@ async function loadTarget(): Promise<TargetData> {
   const db = getSqlClientOrThrow("read");
   const users = await db.any(`
     -- verifySecondRenaissanceMigration.loadTarget users
-    SELECT _id, "legacyData"->>'secondRenaissanceDiscourseUserId' AS "discourseUserId", "displayName"
+    SELECT _id, "legacyData"->>'secondRenaissanceDiscourseUserId' AS "discourseUserId", "displayName",
+      LOWER(email) AS email,
+      COALESCE(("legacyData"->>'secondRenaissanceDiscourseClaimed')::boolean, FALSE) AS claimed
     FROM "Users"
     WHERE "legacyData" ? 'secondRenaissanceDiscourseUserId'
+  `);
+  const otherAccounts = await db.any(`
+    -- verifySecondRenaissanceMigration.loadTarget otherAccounts
+    SELECT username, LOWER(email) AS email
+    FROM "Users"
+    WHERE NOT COALESCE("legacyData" ? 'secondRenaissanceDiscourseUserId', FALSE)
+      AND NOT deleted AND email IS NOT NULL
   `);
   const posts = await db.any(`
     -- verifySecondRenaissanceMigration.loadTarget posts
@@ -57,7 +66,7 @@ async function loadTarget(): Promise<TargetData> {
     LEFT JOIN "Revisions" r ON r._id = c.contents_latest
     WHERE c."legacyData" ? 'secondRenaissanceDiscoursePostId'
   `);
-  return { users, posts, comments };
+  return { users, otherAccounts, posts, comments };
 }
 
 function printResult({ expected, migrated, problems }: MigrationCheckResult): void {

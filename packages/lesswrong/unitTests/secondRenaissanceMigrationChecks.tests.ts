@@ -12,9 +12,9 @@ const date = (day: number) => new Date(`2025-01-${String(day).padStart(2, "0")}T
 function makeSource(): SourceData {
   return {
     users: [
-      { id: -1, username: "system", name: null, createdAt: date(1) },
-      { id: 1, username: "alice", name: "Alice A", createdAt: date(1) },
-      { id: 2, username: "bob", name: "", createdAt: date(1) },
+      { id: -1, username: "system", name: null, createdAt: date(1), email: null },
+      { id: 1, username: "alice", name: "Alice A", createdAt: date(1), email: "Alice@Example.com" },
+      { id: 2, username: "bob", name: "", createdAt: date(1), email: "bob@example.com" },
     ],
     topics: [
       { id: 10, title: "Hello", archetype: "regular", visible: true, categoryId: 4, restricted: false },
@@ -40,10 +40,11 @@ function comment(_id: string, discoursePostId: string, userId: string, day: numb
 function makeTarget(): TargetData {
   return {
     users: [
-      { _id: "userSystem", discourseUserId: "-1", displayName: "system" },
-      { _id: "userAlice", discourseUserId: "1", displayName: "Alice A" },
-      { _id: "userBob", discourseUserId: "2", displayName: "bob" },
+      { _id: "userSystem", discourseUserId: "-1", displayName: "system", email: null, claimed: false },
+      { _id: "userAlice", discourseUserId: "1", displayName: "Alice A", email: "alice@example.com", claimed: false },
+      { _id: "userBob", discourseUserId: "2", displayName: "bob", email: "bob@example.com", claimed: false },
     ],
+    otherAccounts: [],
     posts: [{
       _id: "post10", discourseTopicId: "10", discourseOpeningPostId: "100", title: "Hello", postedAt: date(1),
       userId: "userAlice", draft: false, deletedDraft: false, hasContents: true, commentCount: 4, forumCommentCount: 0, tagSlugs: ["general"],
@@ -113,6 +114,25 @@ describe('checkSecondRenaissanceMigration', () => {
     expect(problems).toContainEqual(expect.stringMatching(/Reply 101 .*postedAt/));
     expect(problems).toContainEqual(expect.stringMatching(/Reply 101 .*comment is deleted/));
     expect(problems).toContainEqual(expect.stringMatching(/Reply 101 .*no content/));
+  });
+
+  it('reports a member whose email is missing', () => {
+    const target = makeTarget();
+    target.users[1] = { ...target.users[1], email: null };
+    expect(getProblems(target)).toContainEqual(expect.stringMatching(/User alice: email isn't set/));
+  });
+
+  it('reports a member who already has another account', () => {
+    const target = makeTarget();
+    target.users[2] = { ...target.users[2], email: null };
+    target.otherAccounts = [{ username: "bobby", email: "bob@example.com" }];
+    expect(getProblems(target)).toContainEqual("User bob already has an account here (bobby); link it with claimDiscourseAccount");
+  });
+
+  it('accepts the name and email a claimed account chose', () => {
+    const target = makeTarget();
+    target.users[2] = { ...target.users[2], displayName: "Robert", email: "robert@example.org", claimed: true };
+    expect(getProblems(target)).toEqual([]);
   });
 
   it('reports Staff topics and private messages as privacy problems', () => {

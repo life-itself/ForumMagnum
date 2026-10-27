@@ -27,9 +27,11 @@ export async function loadDiscourseSource(): Promise<SourceData> {
     return await source.tx(async t => {
       await t.none("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
       const users = await t.any(`
-        SELECT id, username, name, ${utcTimestamp("created_at")} AS "createdAt"
-        FROM users
-        WHERE id > 0 OR id = -1
+        SELECT u.id, u.username, u.name, ${utcTimestamp("u.created_at")} AS "createdAt",
+          CASE WHEN u.id > 0 AND NOT u.staged THEN e.email END AS email
+        FROM users u
+        LEFT JOIN user_emails e ON e.user_id = u.id AND e."primary"
+        WHERE u.id > 0 OR u.id = -1
       `);
       // Discourse sets read_restricted on categories that "everyone" can't see.
       // Categories that only limit who can post (like Meta) stay public.
