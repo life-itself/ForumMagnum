@@ -3,10 +3,11 @@ import { getSqlClientOrThrow } from "@/server/sql/sqlClient";
 import { Tags } from "@/server/collections/tags/collection";
 import { TagRels } from "@/server/collections/tagRels/collection";
 import { Users } from "@/server/collections/users/collection";
-import { createTag } from "@/server/collections/tags/mutations";
+import { createTag, updateTag } from "@/server/collections/tags/mutations";
 import { addOrUpvoteTag } from "@/server/tagging/tagsGraphQL";
 import { computeContextFromUser } from "@/server/vulcan-lib/apollo-server/context";
 import { CATEGORY_TAGS } from "./secondRenaissanceMigrationChecks";
+import { getSourceUrl } from "./secondRenaissanceDiscourseSource";
 
 /* eslint-disable no-console */
 
@@ -15,10 +16,11 @@ import { CATEGORY_TAGS } from "./secondRenaissanceMigrationChecks";
  * the migrated posts with their original category (issue #26). The Discourse
  * importer didn't carry categories over.
  *
- * Reads topic categories from the local `discourse_backup` database
+ * Reads topic categories from a local `discourse_backup*` database
  * (DISCOURSE_SOURCE_URL, localhost only). Dry run by default; pass
  * `{ execute: true }` to write. Safe to re-run: existing tags (by slug) and
- * existing tag-post links are skipped.
+ * existing tag-post links are skipped, and renamed categories rename their tag.
+ * importSecondRenaissanceDiscourse runs this after each import.
  *
  * Usage: yarn repl prod lw packages/lesswrong/scripts/createSecondRenaissanceCategoryTags.ts "createSecondRenaissanceCategoryTags({ execute: true })"
  */
@@ -27,17 +29,6 @@ interface MigratedPost {
   _id: string
   title: string
   topicId: string
-}
-
-export function getSourceUrl(): string {
-  const raw = process.env.DISCOURSE_SOURCE_URL;
-  if (!raw) throw new Error("DISCOURSE_SOURCE_URL is required");
-  const url = new URL(raw);
-  // Restored backups are named discourse_backup, discourse_backup_2026, etc.
-  if (!["localhost", "127.0.0.1"].includes(url.hostname) || !/^\/discourse_backup\w*$/.test(url.pathname)) {
-    throw new Error("DISCOURSE_SOURCE_URL must point at a local discourse_backup* database");
-  }
-  return raw;
 }
 
 async function getTopicCategories(): Promise<Map<string, number>> {
@@ -77,7 +68,7 @@ export async function createSecondRenaissanceCategoryTags({ execute = false, adm
 
   for (const category of CATEGORY_TAGS) {
     const categoryPosts = posts.filter(p => topicCategories.get(p.topicId) === category.discourseCategoryId);
-    let tag = await Tags.findOne({ slug: category.slug, deleted: false });
+    let tag = await Tags.findOne({ slug: { $in: [category.slug, ...(category.previousSlugs ?? [])] }, deleted: false });
 
     if (!tag) {
       console.log(`Create tag "${category.name}" (${category.slug})`);
@@ -85,6 +76,10 @@ export async function createSecondRenaissanceCategoryTags({ execute = false, adm
         await createTag({ data: { name: category.name, slug: category.slug } }, context);
         tag = await Tags.findOne({ slug: category.slug, deleted: false });
       }
+    } else if (tag.name !== category.name) {
+      // The Discourse category was renamed
+      console.log(`Rename tag "${tag.name}" to "${category.name}"`);
+      if (execute) await updateTag({ selector: { _id: tag._id }, data: { name: category.name } }, context);
     } else {
       console.log(`Tag "${category.name}" already exists (${tag._id})`);
     }

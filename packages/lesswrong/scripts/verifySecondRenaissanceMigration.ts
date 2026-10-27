@@ -1,10 +1,8 @@
-import pgPromise from "pg-promise";
 import { getSqlClientOrThrow } from "@/server/sql/sqlClient";
-import { getSourceUrl } from "./createSecondRenaissanceCategoryTags";
+import { loadDiscourseSource } from "./secondRenaissanceDiscourseSource";
 import {
   checkSecondRenaissanceMigration,
   type MigrationCheckResult,
-  type SourceData,
   type TargetData,
 } from "./secondRenaissanceMigrationChecks";
 
@@ -13,55 +11,14 @@ import {
 /**
  * Read-only check that the migrated Second Renaissance data matches the
  * Discourse backup (issue #36): users, posts, comments, authors, dates, comment
- * nesting and category tags, and that no private messages or Staff topics were
- * migrated. Run it after every migration run. Throws if anything is wrong.
+ * nesting, comment counts and category tags, and that no private messages or
+ * Staff topics were migrated. Run it after every migration run. Throws if anything is wrong.
  *
- * Reads the local `discourse_backup` database (DISCOURSE_SOURCE_URL, localhost
+ * Reads a local `discourse_backup*` database (DISCOURSE_SOURCE_URL, localhost
  * only) and the app database. Neither is written to.
  *
  * Usage: yarn repl prod lw packages/lesswrong/scripts/verifySecondRenaissanceMigration.ts "verifySecondRenaissanceMigration()"
  */
-
-async function loadSource(): Promise<SourceData> {
-  const source = pgPromise()(getSourceUrl());
-  try {
-    return await source.tx(async t => {
-      await t.none("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
-      const users = await t.any(`
-        SELECT id, username, name
-        FROM users
-        WHERE id > 0 OR id = -1
-      `);
-      // Discourse sets read_restricted on categories that "everyone" can't see.
-      // Categories that only limit who can post (like Meta) stay public.
-      const topics = await t.any(`
-        SELECT t.id, t.title, t.archetype, t.visible, t.category_id AS "categoryId",
-          COALESCE(c.read_restricted, FALSE) AS restricted
-        FROM topics t
-        LEFT JOIN categories c ON c.id = t.category_id
-        WHERE t.deleted_at IS NULL
-      `);
-      // Discourse stores UTC timestamps without a time zone
-      const posts = await t.any(`
-        SELECT p.id, p.topic_id AS "topicId", p.post_number AS "postNumber",
-          p.reply_to_post_number AS "replyToPostNumber", p.user_id AS "userId",
-          to_char(p.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
-          p.hidden, p.user_deleted AS "userDeleted"
-        FROM posts p
-        JOIN topics t ON t.id = p.topic_id
-        WHERE t.deleted_at IS NULL AND p.deleted_at IS NULL AND p.post_type = 1
-      `);
-      return {
-        users,
-        topics,
-        posts: posts.map(p => ({ ...p, createdAt: new Date(p.createdAt) })),
-      };
-    });
-  } finally {
-    // Only close this connection; pgp.end() would also close the app's database pool
-    await source.$pool.end();
-  }
-}
 
 async function loadTarget(): Promise<TargetData> {
   const db = getSqlClientOrThrow("read");
@@ -76,8 +33,13 @@ async function loadTarget(): Promise<TargetData> {
     SELECT p._id,
       p."legacyData"->>'secondRenaissanceDiscourseTopicId' AS "discourseTopicId",
       p."legacyData"->>'secondRenaissanceDiscourseOpeningPostId' AS "discourseOpeningPostId",
-      p.title, p."postedAt", p."userId", p.draft, p."deletedDraft",
+      p.title, p."postedAt", p."userId", p.draft, p."deletedDraft", p."commentCount",
       COALESCE(TRIM(r.html) <> '', FALSE) AS "hasContents",
+      (
+        SELECT COUNT(*)::int FROM "Comments" c
+        WHERE c."postId" = p._id AND NOT c.deleted
+          AND NOT COALESCE(c."legacyData" ? 'secondRenaissanceDiscoursePostId', FALSE)
+      ) AS "forumCommentCount",
       ARRAY(
         SELECT t.slug FROM "TagRels" tr JOIN "Tags" t ON t._id = tr."tagId"
         WHERE tr."postId" = p._id AND NOT tr.deleted AND NOT t.deleted
@@ -111,7 +73,7 @@ function printResult({ expected, migrated, problems }: MigrationCheckResult): vo
 }
 
 export async function verifySecondRenaissanceMigration(): Promise<MigrationCheckResult> {
-  const [source, target] = await Promise.all([loadSource(), loadTarget()]);
+  const [source, target] = await Promise.all([loadDiscourseSource(), loadTarget()]);
   const result = checkSecondRenaissanceMigration(source, target);
   printResult(result);
   if (result.problems.length) {

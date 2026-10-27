@@ -12,9 +12,9 @@ const date = (day: number) => new Date(`2025-01-${String(day).padStart(2, "0")}T
 function makeSource(): SourceData {
   return {
     users: [
-      { id: -1, username: "system", name: null },
-      { id: 1, username: "alice", name: "Alice A" },
-      { id: 2, username: "bob", name: "" },
+      { id: -1, username: "system", name: null, createdAt: date(1) },
+      { id: 1, username: "alice", name: "Alice A", createdAt: date(1) },
+      { id: 2, username: "bob", name: "", createdAt: date(1) },
     ],
     topics: [
       { id: 10, title: "Hello", archetype: "regular", visible: true, categoryId: 4, restricted: false },
@@ -22,13 +22,13 @@ function makeSource(): SourceData {
       { id: 30, title: "DM", archetype: "private_message", visible: true, categoryId: null, restricted: false },
     ],
     posts: [
-      { id: 100, topicId: 10, postNumber: 1, replyToPostNumber: null, userId: 1, createdAt: date(1), hidden: false, userDeleted: false },
-      { id: 101, topicId: 10, postNumber: 2, replyToPostNumber: null, userId: 2, createdAt: date(2), hidden: false, userDeleted: false },
-      { id: 102, topicId: 10, postNumber: 3, replyToPostNumber: 2, userId: 1, createdAt: date(3), hidden: false, userDeleted: false },
-      { id: 103, topicId: 10, postNumber: 4, replyToPostNumber: 3, userId: -1, createdAt: date(4), hidden: false, userDeleted: false },
-      { id: 104, topicId: 10, postNumber: 5, replyToPostNumber: 1, userId: 2, createdAt: date(5), hidden: false, userDeleted: false },
-      { id: 200, topicId: 20, postNumber: 1, replyToPostNumber: null, userId: 1, createdAt: date(6), hidden: false, userDeleted: false },
-      { id: 300, topicId: 30, postNumber: 1, replyToPostNumber: null, userId: 2, createdAt: date(7), hidden: false, userDeleted: false },
+      { id: 100, topicId: 10, postNumber: 1, replyToPostNumber: null, userId: 1, createdAt: date(1), hidden: false, userDeleted: false, cooked: "<p>Text</p>" },
+      { id: 101, topicId: 10, postNumber: 2, replyToPostNumber: null, userId: 2, createdAt: date(2), hidden: false, userDeleted: false, cooked: "<p>Text</p>" },
+      { id: 102, topicId: 10, postNumber: 3, replyToPostNumber: 2, userId: 1, createdAt: date(3), hidden: false, userDeleted: false, cooked: "<p>Text</p>" },
+      { id: 103, topicId: 10, postNumber: 4, replyToPostNumber: 3, userId: -1, createdAt: date(4), hidden: false, userDeleted: false, cooked: "<p>Text</p>" },
+      { id: 104, topicId: 10, postNumber: 5, replyToPostNumber: 1, userId: 2, createdAt: date(5), hidden: false, userDeleted: false, cooked: "<p>Text</p>" },
+      { id: 200, topicId: 20, postNumber: 1, replyToPostNumber: null, userId: 1, createdAt: date(6), hidden: false, userDeleted: false, cooked: "<p>Text</p>" },
+      { id: 300, topicId: 30, postNumber: 1, replyToPostNumber: null, userId: 2, createdAt: date(7), hidden: false, userDeleted: false, cooked: "<p>Text</p>" },
     ],
   };
 }
@@ -46,7 +46,7 @@ function makeTarget(): TargetData {
     ],
     posts: [{
       _id: "post10", discourseTopicId: "10", discourseOpeningPostId: "100", title: "Hello", postedAt: date(1),
-      userId: "userAlice", draft: false, deletedDraft: false, hasContents: true, tagSlugs: ["general"],
+      userId: "userAlice", draft: false, deletedDraft: false, hasContents: true, commentCount: 4, forumCommentCount: 0, tagSlugs: ["general"],
     }],
     comments: [
       comment("c101", "101", "userBob", 2, null, null),
@@ -143,6 +143,39 @@ describe('checkSecondRenaissanceMigration', () => {
     source.posts[4] = { ...source.posts[4], hidden: true };
     const target = makeTarget();
     target.comments = target.comments.filter(c => c._id !== "c104");
+    target.posts[0] = { ...target.posts[0], commentCount: 3 };
+    expect(getProblems(target, source)).toEqual([]);
+  });
+
+  it('counts comments written on the forum', () => {
+    const target = makeTarget();
+    target.posts[0] = { ...target.posts[0], commentCount: 5, forumCommentCount: 1 };
+    expect(getProblems(target)).toEqual([]);
+  });
+
+  it('reports a wrong comment count', () => {
+    const target = makeTarget();
+    target.posts[0] = { ...target.posts[0], commentCount: 0 };
+    expect(getProblems(target)).toContainEqual(expect.stringMatching(/comment count is 0, expected 4/));
+  });
+
+  it('accepts records that were unpublished after their topic became private', () => {
+    const target = makeTarget();
+    target.posts.push({ ...target.posts[0], _id: "post20", discourseTopicId: "20", title: "Staff notes", draft: true });
+    target.comments.push({ ...target.comments[0], _id: "c300", discoursePostId: "300", deleted: true });
+    expect(getProblems(target)).toEqual([]);
+  });
+
+  it('expects a reply to a deleted post to be a top-level comment', () => {
+    const source = makeSource();
+    // #3 replied to #2, which was deleted in Discourse
+    source.posts = source.posts.filter(p => p.id !== 101);
+    const target = makeTarget();
+    target.comments = target.comments
+      .filter(c => c._id !== "c101")
+      .map(c => c._id === "c102" ? { ...c, parentCommentId: null, topLevelCommentId: null }
+        : c._id === "c103" ? { ...c, topLevelCommentId: "c102" } : c);
+    target.posts[0] = { ...target.posts[0], commentCount: 3 };
     expect(getProblems(target, source)).toEqual([]);
   });
 });
