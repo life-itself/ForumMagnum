@@ -91,9 +91,9 @@ export async function claimDiscourseAccount({ discourseUsername, forumUsername, 
         secondRenaissanceDiscourseClaimed: true,
       }),
     });
-    // The deleted imported account gives up the member's Discourse username
+    // The deleted imported account gives up the member's Discourse username and slug
     await tx.none(`
-      UPDATE "Users" SET username = 'discourse_merged_' || $(discourseUserId),
+      UPDATE "Users" SET username = 'discourse_merged_' || $(discourseUserId), slug = 'discourse-merged-' || $(discourseUserId),
         "legacyData" = ("legacyData" - 'secondRenaissanceDiscourseUserId')
           || jsonb_build_object('secondRenaissanceDiscourseMergedInto', $(targetId), 'secondRenaissanceDiscourseFormerUserId', $(discourseUserId))
       WHERE _id = $(importedId)

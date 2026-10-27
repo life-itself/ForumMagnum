@@ -759,6 +759,14 @@ export const routeTrie = {
       },
       "hasPage": true
     },
+    "c": {
+      "catchAll": {
+        "paramName": "path",
+        "child": {
+          "hasRoute": true
+        }
+      }
+    },
     "cache": {
       "staticChildren": {
         "posts": {
@@ -1344,6 +1352,14 @@ export const routeTrie = {
     "spotlights": {
       "hasPage": true
     },
+    "t": {
+      "catchAll": {
+        "paramName": "path",
+        "child": {
+          "hasRoute": true
+        }
+      }
+    },
     "u": {
       "dynamicChild": {
         "paramName": "slug",
@@ -1354,6 +1370,14 @@ export const routeTrie = {
     },
     "upcomingEvents": {
       "hasPage": true
+    },
+    "uploads": {
+      "catchAll": {
+        "paramName": "path",
+        "child": {
+          "hasRoute": true
+        }
+      }
     },
     "user": {
       "dynamicChild": {
@@ -1467,6 +1491,7 @@ export const routeTrie = {
     "bestoflesswrongadmin": "bestoflesswrongadmin",
     "bookmarks": "bookmarks",
     "books": "books",
+    "c": "c",
     "cache": "cache",
     "ckeditor-token": "ckeditor-token",
     "ckeditor-webhook": "ckeditor-webhook",
@@ -1544,8 +1569,10 @@ export const routeTrie = {
     "sequences": "sequences",
     "sequencesnew": "sequencesNew",
     "spotlights": "spotlights",
+    "t": "t",
     "u": "u",
     "upcomingevents": "upcomingEvents",
+    "uploads": "uploads",
     "user": "user",
     "users": "users",
     "w": "w",

@@ -575,6 +575,30 @@ async function syncComments(tx: Transaction, content: PublicContent, existing: M
 }
 
 /** Comment counts on migrated posts and post/comment counts on migrated users */
+/**
+ * Lets old Discourse profile links (/u/<lowercase username>) find each member:
+ * the profile page also looks accounts up by their old slugs. Accounts merged
+ * away by claimDiscourseAccount first give up the member's slug.
+ */
+async function syncProfileSlugs(tx: Transaction, source: SourceData, ids: IdMaps, counts: ImportCounts): Promise<void> {
+  const merged = await tx.result(`
+    -- importSecondRenaissanceDiscourse merged slugs
+    UPDATE "Users" SET slug = 'discourse-merged-' || ("legacyData"->>'secondRenaissanceDiscourseFormerUserId')
+    WHERE "legacyData" ? 'secondRenaissanceDiscourseMergedInto' AND slug NOT LIKE 'discourse-merged-%'
+  `);
+  const profileSlugs = source.users.map(user => ({ _id: ids.userIds.get(user.id)!, slug: user.username.toLowerCase() }));
+  const added = await tx.result(`
+    -- importSecondRenaissanceDiscourse profile slugs
+    UPDATE "Users" u SET "oldSlugs" = array_append(u."oldSlugs", v.slug)
+    FROM (VALUES ${pgp.helpers.values(profileSlugs, ["_id", "slug"])}) AS v(_id, slug)
+    WHERE u._id = v._id AND u.slug <> v.slug AND NOT (v.slug = ANY(u."oldSlugs"))
+      AND NOT EXISTS (
+        SELECT 1 FROM "Users" o WHERE o._id <> v._id AND (o.slug = v.slug OR v.slug = ANY(o."oldSlugs"))
+      )
+  `);
+  counts.usersUpdated += merged.rowCount + added.rowCount;
+}
+
 async function syncCounts(tx: Transaction, counts: ImportCounts): Promise<void> {
   const posts = await tx.result(`
     -- importSecondRenaissanceDiscourse post counts
@@ -614,6 +638,7 @@ async function runImport(tx: Transaction, source: SourceData, content: PublicCon
   const ids = assignIds(source, content, existing, uploadUrlsByPath);
   const counts = emptyCounts();
   await syncUsers(tx, source, existing.users, ids, counts);
+  await syncProfileSlugs(tx, source, ids, counts);
   await syncPosts(tx, content, existing.posts, ids, counts);
   await syncComments(tx, content, existing.comments, ids, counts);
   await syncCounts(tx, counts);
