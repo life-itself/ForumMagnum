@@ -9,21 +9,31 @@ export interface CategoryTag {
   discourseCategoryId: number
   name: string
   slug: string
+  /** Slugs the tag had before its category was renamed */
+  previousSlugs?: string[]
 }
 
-// The Staff category (#3) is private and its topics aren't migrated
+// Public categories only; topics in read-restricted categories (Staff, the
+// Oasis Tents subcategories, etc.) aren't migrated. Category 6 was renamed in
+// Discourse from "Ideas"; renaming the tag moves its slug and keeps the old one
+// as a redirect.
 export const CATEGORY_TAGS: CategoryTag[] = [
   { discourseCategoryId: 4, name: "General", slug: "general" },
-  { discourseCategoryId: 6, name: "Ideas", slug: "ideas" },
+  { discourseCategoryId: 6, name: "Research and Sense-Making", slug: "research-and-sense-making", previousSlugs: ["ideas"] },
   { discourseCategoryId: 7, name: "People and Orgs", slug: "people-and-orgs" },
   { discourseCategoryId: 11, name: "Welcome", slug: "welcome" },
   { discourseCategoryId: 12, name: "Events", slug: "events" },
+  { discourseCategoryId: 13, name: "Oasis Tents", slug: "oasis-tents" },
+  { discourseCategoryId: 20, name: "Meta", slug: "meta" },
+  { discourseCategoryId: 21, name: "Wiki", slug: "wiki" },
+  { discourseCategoryId: 23, name: "Embodied Knowing", slug: "embodied-knowing" },
 ];
 
 export interface SourceUser {
   id: number
   username: string
   name: string | null
+  createdAt: Date
 }
 
 export interface SourceTopic {
@@ -45,6 +55,8 @@ export interface SourcePost {
   createdAt: Date
   hidden: boolean
   userDeleted: boolean
+  /** Discourse-rendered HTML */
+  cooked: string
 }
 
 export interface SourceData {
@@ -69,6 +81,9 @@ export interface TargetPost {
   draft: boolean
   deletedDraft: boolean
   hasContents: boolean
+  commentCount: number
+  /** Comments written on the forum rather than migrated */
+  forumCommentCount: number
   tagSlugs: string[]
 }
 
@@ -103,7 +118,31 @@ export function isPublicTopic(topic: SourceTopic): boolean {
   return topic.archetype === "regular" && topic.visible && !topic.restricted;
 }
 
-function groupBy<T, K>(items: T[], getKey: (item: T) => K): Map<K, T[]> {
+export interface PublicContent {
+  publicTopics: SourceTopic[]
+  publicTopicIds: Set<number>
+  /** Opening post (#1) of each public topic, by topic ID */
+  openingPosts: Map<number, SourcePost>
+  publicReplies: SourcePost[]
+  repliesByTopic: Map<number, SourcePost[]>
+}
+
+/** The topics and replies that should be on the forum: public, and not hidden or deleted by their author */
+export function selectPublicContent(source: SourceData): PublicContent {
+  const publicTopics = source.topics.filter(isPublicTopic);
+  const publicTopicIds = new Set(publicTopics.map(t => t.id));
+  const publicPosts = source.posts.filter(p => publicTopicIds.has(p.topicId) && !p.hidden && !p.userDeleted);
+  const publicReplies = publicPosts.filter(p => p.postNumber > 1);
+  return {
+    publicTopics,
+    publicTopicIds,
+    openingPosts: new Map(publicPosts.filter(p => p.postNumber === 1).map(p => [p.topicId, p])),
+    publicReplies,
+    repliesByTopic: groupBy(publicReplies, r => r.topicId),
+  };
+}
+
+export function groupBy<T, K>(items: T[], getKey: (item: T) => K): Map<K, T[]> {
   const groups = new Map<K, T[]>();
   for (const item of items) {
     const key = getKey(item);
@@ -151,6 +190,7 @@ function checkUsers(source: SourceData, target: TargetData, problems: string[]):
 function checkPosts(
   publicTopics: SourceTopic[],
   openingPosts: Map<number, SourcePost>,
+  repliesByTopic: Map<number, SourcePost[]>,
   userIdMap: Map<number, string>,
   target: TargetData,
   problems: string[],
@@ -180,6 +220,10 @@ function checkPosts(
     if (post.discourseOpeningPostId !== String(opening.id)) problems.push(`${label}: wrong opening post ID`);
     if (post.draft || post.deletedDraft) problems.push(`${label}: post is a draft or deleted`);
     if (!post.hasContents) problems.push(`${label}: post has no content`);
+    const expectedCommentCount = (repliesByTopic.get(topic.id)?.length ?? 0) + post.forumCommentCount;
+    if (post.commentCount !== expectedCommentCount) {
+      problems.push(`${label}: comment count is ${post.commentCount}, expected ${expectedCommentCount}`);
+    }
     const tagSlug = topic.categoryId === null ? undefined : tagSlugByCategory.get(topic.categoryId);
     if (!tagSlug) problems.push(`${label}: category ${topic.categoryId} has no tag`);
     else if (!post.tagSlugs.includes(tagSlug)) problems.push(`${label}: missing tag "${tagSlug}"`);
@@ -187,18 +231,39 @@ function checkPosts(
   return postIdMap;
 }
 
-/** Replies to the opening post (#1) are top-level comments */
-function isTopLevelReply(reply: SourcePost): boolean {
-  return reply.replyToPostNumber === null || reply.replyToPostNumber === 1;
+export interface ReplyNesting {
+  /** Discourse post ID of the parent reply, or null for a top-level comment */
+  parentId: number | null
+  /** Discourse post ID of the top-level reply of the thread, or null for a top-level comment */
+  rootId: number | null
 }
 
-function getParentReply(reply: SourcePost, repliesByNumber: Map<string, SourcePost>): SourcePost | null {
-  if (isTopLevelReply(reply)) return null;
-  return repliesByNumber.get(`${reply.topicId}:${reply.replyToPostNumber}`) ?? null;
+/**
+ * Where each public reply sits in its comment tree. Replies to the opening post
+ * (#1) are top-level, and so are replies whose parent isn't public (for
+ * example, it was deleted in Discourse).
+ */
+export function getReplyNesting(publicReplies: SourcePost[]): Map<number, ReplyNesting> {
+  const repliesByNumber = new Map(publicReplies.map(r => [`${r.topicId}:${r.postNumber}`, r]));
+  const parentOf = new Map<number, SourcePost | null>();
+  for (const reply of publicReplies) {
+    const isTopLevel = reply.replyToPostNumber === null || reply.replyToPostNumber === 1;
+    parentOf.set(reply.id, isTopLevel ? null : repliesByNumber.get(`${reply.topicId}:${reply.replyToPostNumber}`) ?? null);
+  }
+  const nesting = new Map<number, ReplyNesting>();
+  for (const reply of publicReplies) {
+    const parent = parentOf.get(reply.id) ?? null;
+    let root = parent;
+    // Discourse replies always point at earlier posts, so this terminates
+    for (let next = root && parentOf.get(root.id); next; next = parentOf.get(next.id)) root = next;
+    nesting.set(reply.id, { parentId: parent?.id ?? null, rootId: root?.id ?? null });
+  }
+  return nesting;
 }
 
-function getMigratedCommentId(reply: SourcePost, targetByPostId: Map<string, TargetComment[]>): string | null {
-  const matches = targetByPostId.get(String(reply.id)) ?? [];
+function getMigratedCommentId(discoursePostId: number | null, targetByPostId: Map<string, TargetComment[]>): string | null {
+  if (discoursePostId === null) return null;
+  const matches = targetByPostId.get(String(discoursePostId)) ?? [];
   return matches.length === 1 ? matches[0]._id : null;
 }
 
@@ -210,7 +275,7 @@ function checkComments(
   problems: string[],
 ): void {
   const targetByPostId = groupBy(target.comments, c => c.discoursePostId);
-  const repliesByNumber = new Map(publicReplies.map(r => [`${r.topicId}:${r.postNumber}`, r]));
+  const nesting = getReplyNesting(publicReplies);
   for (const reply of publicReplies) {
     const label = `Reply ${reply.id} (topic ${reply.topicId} #${reply.postNumber})`;
     const matches = targetByPostId.get(String(reply.id)) ?? [];
@@ -227,25 +292,18 @@ function checkComments(
     if (comment.deleted) problems.push(`${label}: comment is deleted`);
     if (!comment.hasContents) problems.push(`${label}: comment has no content`);
 
-    const parent = getParentReply(reply, repliesByNumber);
-    if (!isTopLevelReply(reply) && !parent) {
-      problems.push(`${label}: parent #${reply.replyToPostNumber} isn't a public reply`);
-      continue;
-    }
-    let root = parent;
-    let next = root && getParentReply(root, repliesByNumber);
-    while (next) {
-      root = next;
-      next = getParentReply(next, repliesByNumber);
-    }
-    const expectedParentId = parent ? getMigratedCommentId(parent, targetByPostId) : null;
-    const expectedTopLevelId = root ? getMigratedCommentId(root, targetByPostId) : null;
+    const { parentId, rootId } = nesting.get(reply.id)!;
+    const expectedParentId = getMigratedCommentId(parentId, targetByPostId);
+    const expectedTopLevelId = getMigratedCommentId(rootId, targetByPostId);
     if (comment.parentCommentId !== expectedParentId) problems.push(`${label}: wrong parent comment`);
     if (comment.topLevelCommentId !== expectedTopLevelId) problems.push(`${label}: wrong top-level comment`);
   }
 }
 
-/** Why a migrated record's source shouldn't have been migrated */
+/**
+ * Why a migrated record's source shouldn't have been migrated. Records the
+ * importer has already unpublished (draft posts, deleted comments) are fine.
+ */
 function describeUnexpectedSource(topic: SourceTopic | undefined): string {
   if (!topic) return "isn't in the backup";
   if (topic.archetype === "private_message" || topic.restricted) return "is private (PRIVACY)";
@@ -257,12 +315,12 @@ function checkNothingExtra(source: SourceData, publicTopicIds: Set<number>, publ
   const postsById = new Map(source.posts.map(p => [p.id, p]));
   for (const post of target.posts) {
     const topicId = Number(post.discourseTopicId);
-    if (publicTopicIds.has(topicId)) continue;
+    if (publicTopicIds.has(topicId) || post.draft) continue;
     problems.push(`Post ${post._id}: Discourse topic ${topicId} ${describeUnexpectedSource(topicsById.get(topicId))}`);
   }
   for (const comment of target.comments) {
     const postId = Number(comment.discoursePostId);
-    if (publicReplyIds.has(postId)) continue;
+    if (publicReplyIds.has(postId) || comment.deleted) continue;
     const sourcePost = postsById.get(postId);
     const description = sourcePost ? describeUnexpectedSource(topicsById.get(sourcePost.topicId)) : "isn't in the backup";
     problems.push(`Comment ${comment._id}: Discourse post ${postId} ${description}`);
@@ -275,14 +333,10 @@ function checkNothingExtra(source: SourceData, publicTopicIds: Set<number>, publ
  */
 export function checkSecondRenaissanceMigration(source: SourceData, target: TargetData): MigrationCheckResult {
   const problems: string[] = [];
-  const publicTopics = source.topics.filter(isPublicTopic);
-  const publicTopicIds = new Set(publicTopics.map(t => t.id));
-  const publicPosts = source.posts.filter(p => publicTopicIds.has(p.topicId) && !p.hidden && !p.userDeleted);
-  const openingPosts = new Map(publicPosts.filter(p => p.postNumber === 1).map(p => [p.topicId, p]));
-  const publicReplies = publicPosts.filter(p => p.postNumber > 1);
+  const { publicTopics, publicTopicIds, openingPosts, publicReplies, repliesByTopic } = selectPublicContent(source);
 
   const userIdMap = checkUsers(source, target, problems);
-  const postIdMap = checkPosts(publicTopics, openingPosts, userIdMap, target, problems);
+  const postIdMap = checkPosts(publicTopics, openingPosts, repliesByTopic, userIdMap, target, problems);
   checkComments(publicReplies, userIdMap, postIdMap, target, problems);
   checkNothingExtra(source, publicTopicIds, new Set(publicReplies.map(r => r.id)), target, problems);
 
