@@ -1,8 +1,8 @@
 import {
   cleanDiscourseHtml,
-  emojiForDiscourseName,
   type DiscourseLinkTargets,
 } from '../scripts/secondRenaissanceDiscourseHtml';
+import { emojiForDiscourseName, replaceEmojiCodes } from '../scripts/secondRenaissanceDiscourseEmoji';
 
 const targets: DiscourseLinkTargets = {
   userPathsByUsername: new Map([["martin", "/users/discourse-import-user-13"]]),
@@ -25,6 +25,12 @@ describe('emojiForDiscourseName', () => {
 
   it('keeps unknown names as text', () => {
     expect(emojiForDiscourseName(":not_an_emoji:")).toBe(":not_an_emoji:");
+  });
+
+  it('replaces emoji codes in titles', () => {
+    expect(replaceEmojiCodes("First Steps for New Members :wave:")).toBe("First Steps for New Members 👋");
+    expect(replaceEmojiCodes("Collabothon :wave: 4th April")).toBe("Collabothon 👋 4th April");
+    expect(replaceEmojiCodes("Meeting at 10:30: agenda")).toBe("Meeting at 10:30: agenda");
   });
 });
 

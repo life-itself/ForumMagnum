@@ -18,6 +18,7 @@ import {
   type SourcePost,
 } from "./secondRenaissanceMigrationChecks";
 import { cleanDiscourseHtml, type DiscourseLinkTargets } from "./secondRenaissanceDiscourseHtml";
+import { replaceEmojiCodes } from "./secondRenaissanceDiscourseEmoji";
 import { findDiscourseUploadPaths, loadDiscourseUploads, mirrorDiscourseUploads } from "./secondRenaissanceDiscourseUploads";
 import { createSecondRenaissanceCategoryTags } from "./createSecondRenaissanceCategoryTags";
 import { verifySecondRenaissanceMigration } from "./verifySecondRenaissanceMigration";
@@ -366,7 +367,7 @@ function assignIds(source: SourceData, content: PublicContent, existing: Existin
   const postPathsByTopicId = new Map<number, string>();
   for (const topic of content.publicTopics) {
     const id = existing.posts.get(String(topic.id))?._id ?? randomId();
-    const slug = postSlug(topic.title, topic.id);
+    const slug = postSlug(replaceEmojiCodes(topic.title), topic.id);
     postIds.set(topic.id, id);
     postSlugs.set(topic.id, slug);
     postPathsByTopicId.set(topic.id, `/posts/${id}/${slug}`);
@@ -425,6 +426,7 @@ async function syncPosts(tx: Transaction, content: PublicContent, existing: Map<
     }
     const _id = ids.postIds.get(topic.id)!;
     const slug = ids.postSlugs.get(topic.id)!;
+    const title = replaceEmojiCodes(topic.title);
     const userId = ids.userIds.get(opening.userId)!;
     const match = existing.get(String(topic.id));
     const cleaned = cleanContent(opening, ids.targets);
@@ -433,7 +435,7 @@ async function syncPosts(tx: Transaction, content: PublicContent, existing: Map<
       const revision = makeRevision(_id, "Posts", userId, cleaned, null, opening.createdAt);
       revisions.push(revision);
       newPosts.push({
-        _id, slug, title: topic.title, postedAt: opening.createdAt, createdAt: opening.createdAt,
+        _id, slug, title, postedAt: opening.createdAt, createdAt: opening.createdAt,
         lastCommentedAt: opening.createdAt, frontpageDate: opening.createdAt, status: 2, isFuture: false,
         draft: false, userId, maxBaseScore: 0, contents_latest: revision._id,
         legacyData: {
@@ -444,7 +446,7 @@ async function syncPosts(tx: Transaction, content: PublicContent, existing: Map<
       });
       continue;
     }
-    const fieldsChanged = match.title !== topic.title || match.slug !== slug || match.userId !== userId
+    const fieldsChanged = match.title !== title || match.slug !== slug || match.userId !== userId
       || match.postedAt.getTime() !== opening.createdAt.getTime() || match.unpublished;
     const contentChanged = match.contentHash !== hash;
     if (!fieldsChanged && !contentChanged) continue;
@@ -461,7 +463,7 @@ async function syncPosts(tx: Transaction, content: PublicContent, existing: Map<
         "legacyData" = ("legacyData" - 'secondRenaissanceDiscourseUnpublished')
           || jsonb_build_object('secondRenaissanceDiscourseContentHash', $(hash))
       WHERE _id = $(_id)
-    `, { _id, title: topic.title, slug, userId, postedAt: opening.createdAt, republish: match.unpublished, revisionId, hash });
+    `, { _id, title, slug, userId, postedAt: opening.createdAt, republish: match.unpublished, revisionId, hash });
     if (revisionId) {
       // The post page caches its rendered HTML and doesn't notice a new
       // revision written directly, so drop the cached copy (as

@@ -1,3 +1,5 @@
+import { replaceEmojiCodes } from "./secondRenaissanceDiscourseEmoji";
+
 /**
  * Pure checks comparing the Second Renaissance Discourse backup with the
  * migrated ForumMagnum data (issue #36). Loading lives in
@@ -235,7 +237,7 @@ function checkPosts(
       problems.push(`${label}: no opening post in the backup`);
       continue;
     }
-    if (post.title !== topic.title) problems.push(`${label}: title is "${post.title}"`);
+    if (post.title !== replaceEmojiCodes(topic.title)) problems.push(`${label}: title is "${post.title}"`);
     if (post.postedAt.getTime() !== opening.createdAt.getTime()) {
       problems.push(`${label}: postedAt is ${post.postedAt.toISOString()}, expected ${opening.createdAt.toISOString()}`);
     }

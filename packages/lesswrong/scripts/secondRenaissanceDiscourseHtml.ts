@@ -1,7 +1,7 @@
 import type { CheerioAPI } from "cheerio";
 import { cheerioParse } from "@/server/utils/htmlUtil";
 import { sanitize } from "@/lib/utils/sanitize";
-import emojiList from "@/components/lexical/utils/emoji-list";
+import { emojiForDiscourseName } from "./secondRenaissanceDiscourseEmoji";
 
 /**
  * Converts Discourse-rendered ("cooked") HTML into clean HTML for the forum
@@ -19,32 +19,6 @@ export interface DiscourseLinkTargets {
   postPathsByTopicId: Map<number, string>
   /** Cloudinary URL for each uploaded file, by its /uploads/... path (see secondRenaissanceDiscourseUploads) */
   uploadUrlsByPath: Map<string, string>
-}
-
-// Discourse emoji names that the gemoji list doesn't include
-const EXTRA_EMOJI: Record<string, string> = {
-  china: "🇨🇳",
-  face_with_peeking_eye: "🫣",
-  lotus: "🪷",
-  nerd: "🤓",
-  slight_smile: "🙂",
-  united_kingdom: "🇬🇧",
-  united_states: "🇺🇸",
-};
-
-const toEmojiName = (description: string) => description.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-
-// Discourse uses gemoji aliases (":+1:") and Unicode names (":folded_hands:")
-const EMOJI_BY_NAME = new Map<string, string>([
-  ...emojiList.map((e): [string, string] => [toEmojiName(e.description), e.emoji]),
-  ...emojiList.flatMap(e => e.aliases.map((alias): [string, string] => [alias, e.emoji])),
-  ...Object.entries(EXTRA_EMOJI),
-]);
-
-/** ":thumbsup:" or ":thumbsup:t2:" (skin tone) -> "👍"; unknown names keep their text */
-export function emojiForDiscourseName(alt: string): string {
-  const name = alt.replace(/^:|:$/g, "").replace(/:t\d$/, "");
-  return EMOJI_BY_NAME.get(name) ?? alt;
 }
 
 const TOPIC_PATH = /^\/t\/(?:[^/]+\/)?(\d+)(?:\/\d+)?\/?(?:[?#].*)?$/;
