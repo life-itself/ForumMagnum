@@ -462,6 +462,12 @@ async function syncPosts(tx: Transaction, content: PublicContent, existing: Map<
           || jsonb_build_object('secondRenaissanceDiscourseContentHash', $(hash))
       WHERE _id = $(_id)
     `, { _id, title: topic.title, slug, userId, postedAt: opening.createdAt, republish: match.unpublished, revisionId, hash });
+    if (revisionId) {
+      // The post page caches its rendered HTML and doesn't notice a new
+      // revision written directly, so drop the cached copy (as
+      // convertImagesInObject does)
+      await tx.none(`DELETE FROM "SideCommentCaches" WHERE "postId" = $1`, [_id]);
+    }
     counts.postsUpdated++;
   }
   await insertBatches(tx, revisionColumns, revisions);
