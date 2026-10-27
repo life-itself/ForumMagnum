@@ -1,10 +1,11 @@
 // Seeds of Renaissance brand theme, layered on top of the LessWrong site theme
 // when the `brandTheme` instance setting is "seedsOfRenaissance".
 //
-// Every colour and font below comes from the Seeds of Renaissance design system
+// Every colour below comes from the Seeds of Renaissance design system
 // (https://design.seedsofrenaissance.org/system/tokens.css); the token name is
-// noted next to each value. Do not add colours or fonts that aren't tokens
-// there. See docs/branding/seeds-of-renaissance.md for the full mapping.
+// noted next to each value. Do not add colours that aren't tokens there. Fonts
+// are LessWrong's (see docs/branding/seeds-of-renaissance.md for why). See that
+// doc for the full mapping.
 
 const tokens = {
   white: "#ffffff",       // --white
@@ -22,27 +23,10 @@ const tokens = {
 const inkText = `light-dark(${tokens.ink},${tokens.chalk})`;
 const mutedText = `light-dark(${tokens.muted},${tokens.nightMuted})`;
 
-// GreekFallback (declared in Layout.tsx) only covers Greek code points, so that
-// Greek letters render consistently; everything else falls through to the brand faces.
-const bodyStack = ['GreekFallback', '"Bricolage Grotesque"', 'system-ui', 'sans-serif'].join(','); // --font-body
-// Fraunces is the design system's sanctioned fallback for the (not yet
-// licensed) Polyamine/Restora display faces. Used only for titles.
-const titleStack = ['"Fraunces"', 'Georgia', 'serif'].join(','); // --font-display fallback
-// Hanken Grotesk is the design system's fallback for Apfel Grotezk, which
-// isn't on Google Fonts. Used for (uppercase) buttons.
-const labelStack = ['"Hanken Grotesk"', 'system-ui', 'sans-serif'].join(','); // --font-label fallback
-
-export const seedsOfRenaissanceGoogleFontsUrl = "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..700&family=Hanken+Grotesk:wght@400;500;700&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..500,100;1,9..144,300..500,100&display=swap";
-
 export const seedsOfRenaissanceTheme: SiteThemeSpecification = {
   componentPalette: (dark: boolean) => {
     const ground = dark ? tokens.night : tokens.paper;
     return {
-      fonts: {
-        sansSerifStack: bodyStack,
-        serifStack: bodyStack,
-        headerStack: titleStack,
-      },
       text: {
         primary: inkText,
         normal: inkText,
@@ -102,17 +86,5 @@ export const seedsOfRenaissanceTheme: SiteThemeSpecification = {
   make: (palette: ThemePalette) => ({
     isLW: true,
     isAF: false,
-    typography: {
-      title: {
-        fontFamily: titleStack,
-        fontWeight: 400,
-      },
-      headerStyle: {
-        fontFamily: titleStack,
-      },
-      button: {
-        fontFamily: labelStack,
-      },
-    },
   }),
 };

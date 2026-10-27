@@ -235,6 +235,13 @@ export const forumHeaderLogoDarkUrlSetting = new PublicInstanceSetting<string | 
 export const hiddenMenuTabsSetting = new PublicInstanceSetting<string[]>('forumSettings.hiddenMenuTabs', [], "optional");
 /** Whether to show LessWrong's decorative background art beside the main column */
 export const showLWBackgroundImageSetting = new PublicInstanceSetting<boolean>('forumSettings.showLWBackgroundImage', true, "optional");
+/**
+ * Replaces LessWrong's background art (and its seasonal banners) with this
+ * image, in the top-right corner beside the main column
+ */
+export const backgroundImageUrlSetting = new PublicInstanceSetting<string | null>('forumSettings.backgroundImageUrl', null, "optional");
+/** Variant of backgroundImageUrl for dark mode; falls back to backgroundImageUrl */
+export const backgroundImageDarkUrlSetting = new PublicInstanceSetting<string | null>('forumSettings.backgroundImageDarkUrl', null, "optional");
 /** Timeframe the All Posts page uses when neither the URL nor the user's saved settings pick one */
 export const allPostsDefaultTimeframeSetting = new PublicInstanceSetting<string>('forumSettings.allPostsDefaultTimeframe', 'daily', "optional");
 /** Whether Recent Discussion suggests subscribing to LessWrong meetup notifications */

@@ -30,7 +30,9 @@ const stage1LwSettings = merge({
     tabTitle: "Seeds of Renaissance",
     headerLogoUrl: `${brandAssetsPath}/seeds-mark-colour-64.png`,
     headerLogoDarkUrl: `${brandAssetsPath}/seeds-mark-colour-dark-64.png`,
-    showLWBackgroundImage: false,
+    // The Seeds seed spiral replaces LessWrong's art and seasonal banners
+    backgroundImageUrl: `${brandAssetsPath}/seed-spiral.svg`,
+    backgroundImageDarkUrl: `${brandAssetsPath}/seed-spiral-dark.svg`,
     // The poke invites users to LessWrong meetups
     showMeetupsPoke: false,
     // The default daily view starts at today, which is empty for the migrated posts
