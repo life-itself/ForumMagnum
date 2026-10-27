@@ -63,8 +63,26 @@ type Transaction = ITask<{}>;
 interface ExistingUser {
   _id: string
   discourseUserId: string
+  username: string
   slug: string
   displayName: string | null
+  email: string | null
+  /** An account the member already had here, linked by claimDiscourseAccount */
+  claimed: boolean
+}
+
+/** Who already uses each username, slug and email, across all accounts */
+interface TakenIdentities {
+  usernames: Map<string, string>
+  slugs: Map<string, string>
+  emails: Map<string, string>
+}
+
+/** The username, slug and email an imported account should have */
+interface UserIdentity {
+  username: string
+  slug: string
+  email: string | null
 }
 
 interface ExistingPost {
@@ -125,6 +143,7 @@ interface RevisionRow {
 
 interface ExistingRecords {
   users: Map<string, ExistingUser>
+  taken: TakenIdentities
   posts: Map<string, ExistingPost>
   comments: Map<string, ExistingComment>
 }
@@ -137,6 +156,7 @@ interface PreparedContent {
 
 interface IdMaps {
   userIds: Map<number, string>
+  userIdentities: Map<number, UserIdentity>
   postIds: Map<number, string>
   commentIds: Map<number, string>
   postSlugs: Map<number, string>
@@ -153,7 +173,7 @@ const emptyCounts = (): ImportCounts => ({
 const jsonColumn = (name: string) => ({ name, mod: ":json" as const, cast: "jsonb" });
 
 const userColumns = new pgp.helpers.ColumnSet([
-  "_id", "username", "slug", "displayName", "createdAt", "abTestKey",
+  "_id", "username", "slug", "displayName", "email", { name: "emails", mod: ":raw" as const }, "createdAt", "abTestKey",
   "isAdmin", "noindex", "hideFromPeopleDirectory", jsonColumn("legacyData"),
 ], { table: "Users" });
 
@@ -233,8 +253,15 @@ async function insertBatches(tx: Transaction, columns: typeof userColumns, rows:
 async function loadExisting(tx: Transaction): Promise<ExistingRecords> {
   const users: ExistingUser[] = await tx.any(`
     -- importSecondRenaissanceDiscourse users
-    SELECT _id, slug, "displayName", "legacyData"->>'secondRenaissanceDiscourseUserId' AS "discourseUserId"
+    SELECT _id, username, slug, "displayName", email,
+      "legacyData"->>'secondRenaissanceDiscourseUserId' AS "discourseUserId",
+      COALESCE(("legacyData"->>'secondRenaissanceDiscourseClaimed')::boolean, FALSE) AS claimed
     FROM "Users" WHERE "legacyData" ? 'secondRenaissanceDiscourseUserId'
+  `);
+  // Deleted accounts still hold their username, slug and email
+  const allAccounts: { _id: string, username: string | null, slug: string, email: string | null }[] = await tx.any(`
+    -- importSecondRenaissanceDiscourse taken identities
+    SELECT _id, username, slug, email FROM "Users"
   `);
   const posts: ExistingPost[] = await tx.any(`
     -- importSecondRenaissanceDiscourse posts
@@ -257,8 +284,15 @@ async function loadExisting(tx: Transaction): Promise<ExistingRecords> {
     FROM "Comments" c LEFT JOIN "Revisions" r ON r._id = c.contents_latest
     WHERE c."legacyData" ? 'secondRenaissanceDiscoursePostId'
   `);
+  const taken: TakenIdentities = { usernames: new Map(), slugs: new Map(), emails: new Map() };
+  for (const account of allAccounts) {
+    if (account.username) taken.usernames.set(account.username.toLowerCase(), account._id);
+    taken.slugs.set(account.slug, account._id);
+    if (account.email) taken.emails.set(account.email.toLowerCase(), account._id);
+  }
   return {
     users: new Map(users.map(u => [u.discourseUserId, u])),
+    taken,
     posts: new Map(posts.map(p => [p.discourseTopicId, p])),
     comments: new Map(comments.map(c => [c.discoursePostId, c])),
   };
@@ -268,13 +302,59 @@ const userSlug = (discourseUserId: number) => `discourse-import-user-${discourse
 const postSlug = (title: string, topicId: number) => slugify(title) || `discourse-topic-${topicId}`;
 
 /** Forum IDs for every Discourse record, reusing existing ones */
-function assignIds(source: SourceData, content: PublicContent, existing: ExistingRecords): IdMaps {
-  const userIds = new Map<number, string>();
-  const userPathsByUsername = new Map<string, string>();
+/** Takes a username, slug or email for an account if nobody else has it */
+function claimIdentity(owners: Map<string, string>, key: string, accountId: string): boolean {
+  const owner = owners.get(key);
+  if (owner && owner !== accountId) return false;
+  owners.set(key, accountId);
+  return true;
+}
+
+/**
+ * Gives each imported account its Discourse username and email, so members
+ * can log in with "Forgot password". Never takes a username, slug or email
+ * that another account has; a member whose email belongs to another account
+ * already signed up here, and needs claimDiscourseAccount instead.
+ */
+function planUserIdentities(source: SourceData, existing: ExistingRecords, userIds: Map<number, string>): Map<number, UserIdentity> {
+  const identities = new Map<number, UserIdentity>();
   for (const user of source.users) {
     const match = existing.users.get(String(user.id));
-    userIds.set(user.id, match?._id ?? randomId());
-    userPathsByUsername.set(user.username.toLowerCase(), `/users/${match?.slug ?? userSlug(user.id)}`);
+    if (match?.claimed) {
+      identities.set(user.id, { username: match.username, slug: match.slug, email: match.email });
+      continue;
+    }
+    const accountId = userIds.get(user.id)!;
+    const username = claimIdentity(existing.taken.usernames, user.username.toLowerCase(), accountId)
+      ? user.username
+      : match?.username ?? `discourse_import_${user.id}`;
+    const usernameSlug = slugify(username);
+    const slug = usernameSlug && claimIdentity(existing.taken.slugs, usernameSlug, accountId)
+      ? usernameSlug
+      : match?.slug ?? userSlug(user.id);
+    let email = match?.email ?? null;
+    if (user.email) {
+      if (claimIdentity(existing.taken.emails, user.email.toLowerCase(), accountId)) {
+        email = user.email;
+      } else {
+        const otherAccountId = existing.taken.emails.get(user.email.toLowerCase());
+        console.log(`Discourse user ${user.username} already has an account here (${otherAccountId}); link it with claimDiscourseAccount`);
+      }
+    }
+    identities.set(user.id, { username, slug, email });
+  }
+  return identities;
+}
+
+function assignIds(source: SourceData, content: PublicContent, existing: ExistingRecords): IdMaps {
+  const userIds = new Map<number, string>();
+  for (const user of source.users) {
+    userIds.set(user.id, existing.users.get(String(user.id))?._id ?? randomId());
+  }
+  const userIdentities = planUserIdentities(source, existing, userIds);
+  const userPathsByUsername = new Map<string, string>();
+  for (const user of source.users) {
+    userPathsByUsername.set(user.username.toLowerCase(), `/users/${userIdentities.get(user.id)!.slug}`);
   }
   const postIds = new Map<number, string>();
   const postSlugs = new Map<number, string>();
@@ -290,26 +370,40 @@ function assignIds(source: SourceData, content: PublicContent, existing: Existin
   for (const reply of content.publicReplies) {
     commentIds.set(reply.id, existing.comments.get(String(reply.id))?._id ?? randomId());
   }
-  return { userIds, postIds, commentIds, postSlugs, targets: { userPathsByUsername, postPathsByTopicId } };
+  return { userIds, userIdentities, postIds, commentIds, postSlugs, targets: { userPathsByUsername, postPathsByTopicId } };
+}
+
+/** Login email for an account, in the format the Users `emails` column uses */
+function emailsColumnValue(email: string | null) {
+  return email ? pgp.as.format("ARRAY[$1::jsonb]", [JSON.stringify({ address: email, verified: false })]) : "NULL";
 }
 
 async function syncUsers(tx: Transaction, source: SourceData, existing: Map<string, ExistingUser>, ids: IdMaps, counts: ImportCounts): Promise<void> {
   const newUsers: object[] = [];
   for (const user of source.users) {
-    const displayName = getExpectedDisplayName(user);
     const match = existing.get(String(user.id));
+    // Claimed accounts keep the name, username and email their owner chose
+    if (match?.claimed) continue;
+    const displayName = getExpectedDisplayName(user);
+    const { username, slug, email } = ids.userIdentities.get(user.id)!;
     if (!match) {
-      // Historical accounts have no email or password, so nobody can log in as them
+      // Members log in by resetting their password; nobody knows one yet
       newUsers.push({
-        _id: ids.userIds.get(user.id), username: `discourse_import_${user.id}`, slug: userSlug(user.id),
-        displayName, createdAt: user.createdAt, abTestKey: randomId(),
+        _id: ids.userIds.get(user.id), username, slug, displayName, email, emails: emailsColumnValue(email),
+        createdAt: user.createdAt, abTestKey: randomId(),
         isAdmin: false, noindex: true, hideFromPeopleDirectory: true,
         legacyData: { secondRenaissanceDiscourseUserId: String(user.id), secondRenaissanceDiscourseUsername: user.username },
       });
-    } else if (match.displayName !== displayName) {
-      await tx.none(`UPDATE "Users" SET "displayName" = $1 WHERE _id = $2`, [displayName, match._id]);
-      counts.usersUpdated++;
+      continue;
     }
+    if (match.displayName === displayName && match.username === username && match.slug === slug && match.email === email) continue;
+    await tx.none(`
+      UPDATE "Users" SET "displayName" = $(displayName), username = $(username), slug = $(slug),
+        "oldSlugs" = CASE WHEN slug = $(slug) THEN "oldSlugs" ELSE array_append("oldSlugs", slug) END,
+        email = $(email), emails = $(emails:raw)
+      WHERE _id = $(_id)
+    `, { _id: match._id, displayName, username, slug, email, emails: emailsColumnValue(email) });
+    counts.usersUpdated++;
   }
   await insertBatches(tx, userColumns, newUsers);
   counts.usersCreated += newUsers.length;

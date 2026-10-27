@@ -34,6 +34,8 @@ export interface SourceUser {
   username: string
   name: string | null
   createdAt: Date
+  /** Primary email; null for the system account */
+  email: string | null
 }
 
 export interface SourceTopic {
@@ -69,6 +71,10 @@ export interface TargetUser {
   _id: string
   discourseUserId: string
   displayName: string | null
+  /** Lowercased, so the check can compare without printing it */
+  email: string | null
+  /** An account the member already had here, linked by claimDiscourseAccount */
+  claimed: boolean
 }
 
 export interface TargetPost {
@@ -99,8 +105,15 @@ export interface TargetComment {
   hasContents: boolean
 }
 
+export interface OtherAccount {
+  username: string
+  email: string
+}
+
 export interface TargetData {
   users: TargetUser[]
+  /** Accounts that aren't linked to a Discourse user, with lowercased emails */
+  otherAccounts: OtherAccount[]
   posts: TargetPost[]
   comments: TargetComment[]
 }
@@ -160,6 +173,7 @@ export function getExpectedDisplayName(user: SourceUser): string {
 }
 
 function checkUsers(source: SourceData, target: TargetData, problems: string[]): Map<number, string> {
+  const otherAccountsByEmail = new Map(target.otherAccounts.map(a => [a.email, a.username]));
   const targetByDiscourseId = groupBy(target.users, u => u.discourseUserId);
   const userIdMap = new Map<number, string>();
   for (const sourceUser of source.users) {
@@ -170,9 +184,18 @@ function checkUsers(source: SourceData, target: TargetData, problems: string[]):
     }
     const [user] = matches;
     userIdMap.set(sourceUser.id, user._id);
+    // Claimed accounts keep the name and email their owner chose
+    if (user.claimed) continue;
     const expectedName = getExpectedDisplayName(sourceUser);
     if (user.displayName !== expectedName) {
       problems.push(`User ${sourceUser.username}: display name is "${user.displayName}", expected "${expectedName}"`);
+    }
+    const email = sourceUser.email?.toLowerCase();
+    const otherAccount = email && otherAccountsByEmail.get(email);
+    if (otherAccount) {
+      problems.push(`User ${sourceUser.username} already has an account here (${otherAccount}); link it with claimDiscourseAccount`);
+    } else if (email && user.email !== email) {
+      problems.push(`User ${sourceUser.username}: email isn't set to their Discourse email, so they can't reset their password`);
     }
   }
   const sourceIds = new Set(source.users.map(u => String(u.id)));
