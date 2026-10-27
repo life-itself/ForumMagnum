@@ -17,7 +17,8 @@ import {
   type SourceData,
   type SourcePost,
 } from "./secondRenaissanceMigrationChecks";
-import { cleanDiscourseHtml, HTML_CLEANUP_VERSION, type DiscourseLinkTargets } from "./secondRenaissanceDiscourseHtml";
+import { cleanDiscourseHtml, type DiscourseLinkTargets } from "./secondRenaissanceDiscourseHtml";
+import { findDiscourseUploadPaths, loadDiscourseUploads, mirrorDiscourseUploads } from "./secondRenaissanceDiscourseUploads";
 import { createSecondRenaissanceCategoryTags } from "./createSecondRenaissanceCategoryTags";
 import { verifySecondRenaissanceMigration } from "./verifySecondRenaissanceMigration";
 
@@ -31,8 +32,11 @@ import { verifySecondRenaissanceMigration } from "./verifySecondRenaissanceMigra
  * run only writes what changed since the last one:
  * - creates users, posts and comments that are new in Discourse;
  * - updates titles, authors, dates, comment nesting and display names that
- *   changed, and content whose Discourse HTML changed (or whose cleanup did,
- *   see HTML_CLEANUP_VERSION);
+ *   changed, and content whose cleaned HTML changed (because the Discourse
+ *   post was edited, the cleanup changed, or a link target moved);
+ * - moves uploaded images and attachments to Cloudinary when `uploadsDir`
+ *   (the backup's extracted `uploads/` folder) is given, and points posts at
+ *   them (secondRenaissanceDiscourseUploads);
  * - unpublishes anything that's no longer public in Discourse (posts become
  *   drafts, comments are marked deleted), and republishes it if it becomes
  *   public again;
@@ -47,7 +51,7 @@ import { verifySecondRenaissanceMigration } from "./verifySecondRenaissanceMigra
  * anyone. Reindex Elasticsearch after running against production.
  *
  * Dry run by default: everything runs inside a transaction that's rolled
- * back, so the counts are exact. Pass `{ execute: true }` to commit. A target
+ * back, so the counts are exact, and nothing is uploaded. Pass `{ execute: true }` to commit. A target
  * database that isn't on localhost also needs `{ allowRemote: true }`.
  *
  * Usage: yarn repl prod lw packages/lesswrong/scripts/importSecondRenaissanceDiscourse.ts "importSecondRenaissanceDiscourse({ execute: true })"
@@ -148,10 +152,10 @@ interface ExistingRecords {
   comments: Map<string, ExistingComment>
 }
 
-interface PreparedContent {
+interface CleanedContent {
   html: string
+  /** Hash of the cleaned HTML, stored to detect changes on later runs */
   hash: string
-  wordCount: number
 }
 
 interface IdMaps {
@@ -204,17 +208,18 @@ function checkTarget(allowRemote: boolean): string {
   return `${hostname}${pathname}`;
 }
 
-function hashContent(cooked: string): string {
-  return createHash("sha256").update(`${HTML_CLEANUP_VERSION}\n${cooked}`).digest("hex");
-}
 
-function prepareContent(post: SourcePost, targets: DiscourseLinkTargets): PreparedContent {
+function cleanContent(post: SourcePost, targets: DiscourseLinkTargets): CleanedContent {
   const html = cleanDiscourseHtml(post.cooked, targets);
-  const markdown = dataToMarkdown(html, "html").trim();
-  return { html, hash: hashContent(post.cooked), wordCount: markdown ? markdown.split(/\s+/).length : 0 };
+  return { html, hash: createHash("sha256").update(html).digest("hex") };
 }
 
-function makeRevision(documentId: string, collectionName: "Posts" | "Comments", userId: string, content: PreparedContent, previousVersion: string | null, editedAt: Date): RevisionRow {
+function countWords(html: string): number {
+  const markdown = dataToMarkdown(html, "html").trim();
+  return markdown ? markdown.split(/\s+/).length : 0;
+}
+
+function makeRevision(documentId: string, collectionName: "Posts" | "Comments", userId: string, content: CleanedContent, previousVersion: string | null, editedAt: Date): RevisionRow {
   return {
     _id: randomId(),
     documentId,
@@ -226,7 +231,7 @@ function makeRevision(documentId: string, collectionName: "Posts" | "Comments", 
     userId,
     originalContents: { type: "ckEditorMarkup", data: content.html },
     html: content.html,
-    wordCount: content.wordCount,
+    wordCount: countWords(content.html),
     changeMetrics: htmlToChangeMetrics("", content.html),
   };
 }
@@ -346,7 +351,7 @@ function planUserIdentities(source: SourceData, existing: ExistingRecords, userI
   return identities;
 }
 
-function assignIds(source: SourceData, content: PublicContent, existing: ExistingRecords): IdMaps {
+function assignIds(source: SourceData, content: PublicContent, existing: ExistingRecords, uploadUrlsByPath: Map<string, string>): IdMaps {
   const userIds = new Map<number, string>();
   for (const user of source.users) {
     userIds.set(user.id, existing.users.get(String(user.id))?._id ?? randomId());
@@ -370,7 +375,7 @@ function assignIds(source: SourceData, content: PublicContent, existing: Existin
   for (const reply of content.publicReplies) {
     commentIds.set(reply.id, existing.comments.get(String(reply.id))?._id ?? randomId());
   }
-  return { userIds, userIdentities, postIds, commentIds, postSlugs, targets: { userPathsByUsername, postPathsByTopicId } };
+  return { userIds, userIdentities, postIds, commentIds, postSlugs, targets: { userPathsByUsername, postPathsByTopicId, uploadUrlsByPath } };
 }
 
 /** Login email for an account, in the format the Users `emails` column uses */
@@ -422,9 +427,10 @@ async function syncPosts(tx: Transaction, content: PublicContent, existing: Map<
     const slug = ids.postSlugs.get(topic.id)!;
     const userId = ids.userIds.get(opening.userId)!;
     const match = existing.get(String(topic.id));
-    const hash = hashContent(opening.cooked);
+    const cleaned = cleanContent(opening, ids.targets);
+    const { hash } = cleaned;
     if (!match) {
-      const revision = makeRevision(_id, "Posts", userId, prepareContent(opening, ids.targets), null, opening.createdAt);
+      const revision = makeRevision(_id, "Posts", userId, cleaned, null, opening.createdAt);
       revisions.push(revision);
       newPosts.push({
         _id, slug, title: topic.title, postedAt: opening.createdAt, createdAt: opening.createdAt,
@@ -444,7 +450,7 @@ async function syncPosts(tx: Transaction, content: PublicContent, existing: Map<
     if (!fieldsChanged && !contentChanged) continue;
     let revisionId: string | null = null;
     if (contentChanged) {
-      const revision = makeRevision(_id, "Posts", userId, prepareContent(opening, ids.targets), match.version, new Date());
+      const revision = makeRevision(_id, "Posts", userId, cleaned, match.version, new Date());
       revisions.push(revision);
       revisionId = revision._id;
     }
@@ -500,9 +506,10 @@ async function syncComments(tx: Transaction, content: PublicContent, existing: M
     const topLevelCommentId = rootId === null ? null : ids.commentIds.get(rootId)!;
     const { children, descendants } = replyCounts.get(reply.id)!;
     const match = existing.get(String(reply.id));
-    const hash = hashContent(reply.cooked);
+    const cleaned = cleanContent(reply, ids.targets);
+    const { hash } = cleaned;
     if (!match) {
-      const revision = makeRevision(_id, "Comments", userId, prepareContent(reply, ids.targets), null, reply.createdAt);
+      const revision = makeRevision(_id, "Comments", userId, cleaned, null, reply.createdAt);
       revisions.push(revision);
       newComments.push({
         _id, postId, userId, createdAt: reply.createdAt, postedAt: reply.createdAt, parentCommentId, topLevelCommentId,
@@ -525,7 +532,7 @@ async function syncComments(tx: Transaction, content: PublicContent, existing: M
     if (!fieldsChanged && !contentChanged) continue;
     let revision: RevisionRow | null = null;
     if (contentChanged) {
-      revision = makeRevision(_id, "Comments", userId, prepareContent(reply, ids.targets), match.version, new Date());
+      revision = makeRevision(_id, "Comments", userId, cleaned, match.version, new Date());
       revisions.push(revision);
     }
     await tx.none(`
@@ -595,11 +602,10 @@ async function syncCounts(tx: Transaction, counts: ImportCounts): Promise<void> 
   counts.countsUpdated += posts.rowCount + users.rowCount;
 }
 
-async function runImport(tx: Transaction, source: SourceData): Promise<ImportCounts> {
+async function runImport(tx: Transaction, source: SourceData, content: PublicContent, uploadUrlsByPath: Map<string, string>): Promise<ImportCounts> {
   await tx.one("SELECT pg_advisory_xact_lock($1, $2) AS locked", ADVISORY_LOCK);
-  const content = selectPublicContent(source);
   const existing = await loadExisting(tx);
-  const ids = assignIds(source, content, existing);
+  const ids = assignIds(source, content, existing, uploadUrlsByPath);
   const counts = emptyCounts();
   await syncUsers(tx, source, existing.users, ids, counts);
   await syncPosts(tx, content, existing.posts, ids, counts);
@@ -608,18 +614,29 @@ async function runImport(tx: Transaction, source: SourceData): Promise<ImportCou
   return counts;
 }
 
-export async function importSecondRenaissanceDiscourse({ execute = false, allowRemote = false }: {
+export async function importSecondRenaissanceDiscourse({ execute = false, allowRemote = false, uploadsDir }: {
   execute?: boolean,
   allowRemote?: boolean,
+  /** The backup's extracted `uploads/` folder; without it, files not yet on Cloudinary keep their Discourse URLs */
+  uploadsDir?: string,
 } = {}): Promise<ImportCounts> {
   const target = checkTarget(allowRemote);
   console.log(`${execute ? "EXECUTING" : "DRY RUN (rolled back)"}: importing into ${target}`);
   const source = await loadDiscourseSource();
+  const content = selectPublicContent(source);
+
+  // Uploads happen outside the transaction: Cloudinary can't be rolled back,
+  // and the Images table makes them reusable on the next run
+  const publicPosts = [...content.openingPosts.values(), ...content.publicReplies];
+  const linkPaths = new Set(publicPosts.flatMap(post => findDiscourseUploadPaths(post.cooked)));
+  const uploads = await mirrorDiscourseUploads(linkPaths, await loadDiscourseUploads(), { uploadsDir, execute });
+  console.log(`Uploads: ${uploads.uploaded} uploaded to Cloudinary, ${uploads.pending} not yet uploaded, ${uploads.failed.length} failed`);
+  for (const failure of uploads.failed) console.log(`  Failed: ${failure}`);
 
   let counts = emptyCounts();
   try {
     await getSqlClientOrThrow().tx(async tx => {
-      counts = await runImport(tx, source);
+      counts = await runImport(tx, source, content, uploads.urlsByPath);
       if (!execute) throw new Error(DRY_RUN_ROLLBACK);
     });
   } catch (e) {

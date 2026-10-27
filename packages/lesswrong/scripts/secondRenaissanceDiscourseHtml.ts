@@ -12,14 +12,13 @@ import emojiList from "@/components/lexical/utils/emoji-list";
 
 export const DISCOURSE_ORIGIN = "https://forum.secondrenaissance.net";
 
-/** Bump when the cleanup changes, so the importer re-cleans existing content */
-export const HTML_CLEANUP_VERSION = 1;
-
 export interface DiscourseLinkTargets {
   /** Forum profile path for each Discourse username (lowercased) */
   userPathsByUsername: Map<string, string>
   /** Forum post path for each migrated Discourse topic */
   postPathsByTopicId: Map<number, string>
+  /** Cloudinary URL for each uploaded file, by its /uploads/... path (see secondRenaissanceDiscourseUploads) */
+  uploadUrlsByPath: Map<string, string>
 }
 
 // Discourse emoji names that the gemoji list doesn't include
@@ -55,6 +54,8 @@ const USER_PATH = /^\/u\/([^/?#]+)/;
 function rewriteUrl(url: string, targets: DiscourseLinkTargets): string {
   const path = url.startsWith(DISCOURSE_ORIGIN) ? url.slice(DISCOURSE_ORIGIN.length) : url;
   if (!path.startsWith("/") || path.startsWith("//")) return url;
+  const uploadUrl = path.startsWith("/uploads/") && targets.uploadUrlsByPath.get(path.split(/[?#]/)[0]);
+  if (uploadUrl) return uploadUrl;
   const topicMatch = TOPIC_PATH.exec(path);
   const topicPath = topicMatch && targets.postPathsByTopicId.get(Number(topicMatch[1]));
   if (topicPath) return topicPath;
@@ -141,7 +142,8 @@ function rewriteLinks($: CheerioAPI, targets: DiscourseLinkTargets): void {
     link.attr("href", href);
   });
   $("img[src]").each((_, img) => {
-    $(img).attr("src", rewriteUrl($(img).attr("src")!, targets));
+    // srcset only lists other sizes on the Discourse server
+    $(img).attr("src", rewriteUrl($(img).attr("src")!, targets)).removeAttr("srcset");
   });
 }
 
