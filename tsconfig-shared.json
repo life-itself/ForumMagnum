@@ -47,6 +47,8 @@
     "ckEditor/src/editorConfigs.js",
     "playwright",
     "playwright.config.ts",
+    "playwright-smoke",
+    "playwright.smoke.config.ts",
     "./build.ts",
     ".next/types/**/*.ts",
     "app",
