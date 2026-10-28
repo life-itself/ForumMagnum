@@ -35,6 +35,8 @@ const stage1LwSettings = merge({
     backgroundImageDarkUrl: `${brandAssetsPath}/seed-spiral-dark.svg`,
     // The poke invites users to LessWrong meetups
     showMeetupsPoke: false,
+    // In place of LessWrong's comment guidelines under the comment box
+    commentGuidelinesHtml: `<p><em>Comment guidelines:</em> please keep to our <a href="/faq">ground rules</a>. Respect each other, stay on topic, and avoid personal attacks.</p>`,
     // The default daily view starts at today, which is empty for the migrated posts
     allPostsDefaultTimeframe: "allTime",
     hiddenMenuTabs: [
