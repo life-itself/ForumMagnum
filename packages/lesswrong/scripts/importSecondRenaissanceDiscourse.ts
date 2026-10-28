@@ -4,11 +4,13 @@ import { randomId } from "@/lib/random";
 import { slugify } from "@/lib/utils/slugify";
 import { getSqlClientOrThrow } from "@/server/sql/sqlClient";
 import { getPgPromiseLib } from "@/server/sqlConnection";
+import { adminAccountSetting } from "@/lib/instanceSettings";
 import type { ChangeMetrics } from "@/server/collections/revisions/collection";
 import { getNextVersionAfterSemver, htmlToChangeMetrics } from "@/server/editor/utils";
 import { dataToMarkdown } from "@/server/editor/conversionUtils";
 import { loadDiscourseSource } from "./secondRenaissanceDiscourseSource";
 import {
+  MIGRATED_MEMBER_KARMA,
   getExpectedDisplayName,
   getReplyNesting,
   selectPublicContent,
@@ -42,6 +44,8 @@ import { verifySecondRenaissanceMigration } from "./verifySecondRenaissanceMigra
  *   drafts, comments are marked deleted), and republishes it if it becomes
  *   public again;
  * - recomputes comment counts and per-user post and comment counts;
+ * - marks migrated members as reviewed with starting karma, so they aren't
+ *   treated as brand-new accounts (syncMemberTrust);
  * - tags posts with their Discourse category (createSecondRenaissanceCategoryTags);
  * - finishes with verifySecondRenaissanceMigration.
  * A second run with an unchanged backup makes no changes.
@@ -601,6 +605,29 @@ async function syncProfileSlugs(tx: Transaction, source: SourceData, ids: IdMaps
   counts.usersUpdated += merged.rowCount + added.rowCount;
 }
 
+/**
+ * Migrated members were members of the old forum, so they shouldn't be
+ * treated as brand-new accounts (#61): mark them reviewed by the admin
+ * account, so their posts and comments aren't held for approval, and give
+ * them enough karma to lift the limits on new accounts (3 comments a day,
+ * 2 posts a week below 5 karma). Never lowers karma or changes an existing
+ * reviewer.
+ */
+async function syncMemberTrust(tx: Transaction, counts: ImportCounts): Promise<void> {
+  const adminAccountId = adminAccountSetting.get("LessWrong")?._id;
+  if (!adminAccountId) throw new Error("The adminAccount setting is required to mark migrated members as reviewed");
+  const result = await tx.result(`
+    -- importSecondRenaissanceDiscourse member trust
+    UPDATE "Users" SET
+      "reviewedByUserId" = COALESCE("reviewedByUserId", $(adminAccountId)),
+      "reviewedAt" = COALESCE("reviewedAt", NOW()),
+      karma = GREATEST(COALESCE(karma, 0), $(startingKarma))
+    WHERE "legacyData" ? 'secondRenaissanceDiscourseUserId'
+      AND ("reviewedByUserId" IS NULL OR COALESCE(karma, 0) < $(startingKarma))
+  `, { adminAccountId, startingKarma: MIGRATED_MEMBER_KARMA });
+  counts.usersUpdated += result.rowCount;
+}
+
 async function syncCounts(tx: Transaction, counts: ImportCounts): Promise<void> {
   const posts = await tx.result(`
     -- importSecondRenaissanceDiscourse post counts
@@ -643,6 +670,7 @@ async function runImport(tx: Transaction, source: SourceData, content: PublicCon
   await syncProfileSlugs(tx, source, ids, counts);
   await syncPosts(tx, content, existing.posts, ids, counts);
   await syncComments(tx, content, existing.comments, ids, counts);
+  await syncMemberTrust(tx, counts);
   await syncCounts(tx, counts);
   return counts;
 }

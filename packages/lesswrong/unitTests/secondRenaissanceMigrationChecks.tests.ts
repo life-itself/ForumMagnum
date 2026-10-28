@@ -40,9 +40,9 @@ function comment(_id: string, discoursePostId: string, userId: string, day: numb
 function makeTarget(): TargetData {
   return {
     users: [
-      { _id: "userSystem", discourseUserId: "-1", displayName: "system", email: null, claimed: false },
-      { _id: "userAlice", discourseUserId: "1", displayName: "Alice A", email: "alice@example.com", claimed: false },
-      { _id: "userBob", discourseUserId: "2", displayName: "bob", email: "bob@example.com", claimed: false },
+      { _id: "userSystem", discourseUserId: "-1", displayName: "system", email: null, claimed: false, reviewed: true, karma: 5 },
+      { _id: "userAlice", discourseUserId: "1", displayName: "Alice A", email: "alice@example.com", claimed: false, reviewed: true, karma: 12 },
+      { _id: "userBob", discourseUserId: "2", displayName: "bob", email: "bob@example.com", claimed: false, reviewed: true, karma: 5 },
     ],
     otherAccounts: [],
     posts: [{
@@ -114,6 +114,14 @@ describe('checkSecondRenaissanceMigration', () => {
     expect(problems).toContainEqual(expect.stringMatching(/Reply 101 .*postedAt/));
     expect(problems).toContainEqual(expect.stringMatching(/Reply 101 .*comment is deleted/));
     expect(problems).toContainEqual(expect.stringMatching(/Reply 101 .*no content/));
+  });
+
+  it('reports a member treated as a new account', () => {
+    const target = makeTarget();
+    target.users[1] = { ...target.users[1], reviewed: false, karma: 0 };
+    const problems = getProblems(target);
+    expect(problems).toContainEqual(expect.stringMatching(/User alice: not marked as reviewed/));
+    expect(problems).toContainEqual(expect.stringMatching(/User alice: karma is 0/));
   });
 
   it('reports a member whose email is missing', () => {

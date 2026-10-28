@@ -26,7 +26,8 @@ async function loadTarget(): Promise<TargetData> {
     -- verifySecondRenaissanceMigration.loadTarget users
     SELECT _id, "legacyData"->>'secondRenaissanceDiscourseUserId' AS "discourseUserId", "displayName",
       LOWER(email) AS email,
-      COALESCE(("legacyData"->>'secondRenaissanceDiscourseClaimed')::boolean, FALSE) AS claimed
+      COALESCE(("legacyData"->>'secondRenaissanceDiscourseClaimed')::boolean, FALSE) AS claimed,
+      "reviewedByUserId" IS NOT NULL AS reviewed, COALESCE(karma, 0) AS karma
     FROM "Users"
     WHERE "legacyData" ? 'secondRenaissanceDiscourseUserId'
   `);
