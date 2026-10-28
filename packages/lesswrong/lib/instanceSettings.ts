@@ -244,6 +244,11 @@ export const backgroundImageUrlSetting = new PublicInstanceSetting<string | null
 export const backgroundImageDarkUrlSetting = new PublicInstanceSetting<string | null>('forumSettings.backgroundImageDarkUrl', null, "optional");
 /** Timeframe the All Posts page uses when neither the URL nor the user's saved settings pick one */
 export const allPostsDefaultTimeframeSetting = new PublicInstanceSetting<string>('forumSettings.allPostsDefaultTimeframe', 'daily', "optional");
+/**
+ * Replaces LessWrong's default and frontpage comment guidelines shown under
+ * the comment box (HTML)
+ */
+export const commentGuidelinesHtmlSetting = new PublicInstanceSetting<string | null>('forumSettings.commentGuidelinesHtml', null, "optional");
 /** Whether Recent Discussion suggests subscribing to LessWrong meetup notifications */
 export const showMeetupsPokeSetting = new PublicInstanceSetting<boolean>('forumSettings.showMeetupsPoke', true, "optional");
 

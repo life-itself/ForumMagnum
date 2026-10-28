@@ -16,6 +16,8 @@ import ModerationGuidelinesEditForm from "./ModerationGuidelinesEditForm";
 import ContentStyles from "../../common/ContentStyles";
 import { defineStyles, safeForDarkMode } from '@/components/hooks/defineStyles';
 import { useStyles } from '@/components/hooks/useStyles';
+import { useForumType } from '@/components/hooks/useForumType';
+import type { ForumTypeString } from '@/lib/instanceSettings';
 
 const PostsModerationGuidelinesQuery = gql(`
   query PostsModerationGuidelines($documentId: String) {
@@ -105,6 +107,7 @@ interface ModerationGuidelinesParts {
 const getPostModerationGuidelines = (
   post: PostsModerationGuidelines,
   classes: ClassesType<typeof styles>,
+  forumType: ForumTypeString,
 ): ModerationGuidelinesParts => {
   const moderationStyle = post.moderationStyle || (post.user?.moderationStyle || "")
   const moderationStyleClass = (classes as AnyBecauseTodo)[moderationStyle];
@@ -122,9 +125,9 @@ const getPostModerationGuidelines = (
   if (html) bodyHtml += html;
   if (html && post.frontpageDate) bodyHtml += "<hr/>";
   if (post.frontpageDate) {
-    bodyHtml += getFrontpageGuidelines();
+    bodyHtml += getFrontpageGuidelines(forumType);
   } else if (!html && !moderationStyle) {
-    bodyHtml += getDefaultGuidelines();
+    bodyHtml += getDefaultGuidelines(forumType);
   }
 
   return { header, bodyHtml, truncatedBodyHtml: truncateGuidelines(bodyHtml) };
@@ -141,6 +144,7 @@ const ModerationGuidelinesBox = ({commentType = "post", documentId}: {
   documentId: string,
 }) => {
   const classes = useStyles(styles);
+  const { forumType } = useForumType();
   const { recordEvent } = useNewEvents();
   const currentUser = useCurrentUser();
   const { openDialog } = useDialog();
@@ -208,7 +212,7 @@ const ModerationGuidelinesBox = ({commentType = "post", documentId}: {
     });
   }
 
-  const { header, bodyHtml, truncatedBodyHtml } = isPostType(document) ? getPostModerationGuidelines(document, classes) : getSubforumModerationGuidelines(document)
+  const { header, bodyHtml, truncatedBodyHtml } = isPostType(document) ? getPostModerationGuidelines(document, classes, forumType) : getSubforumModerationGuidelines(document)
   const displayedBodyHtml = expanded ? bodyHtml : truncatedBodyHtml
 
   const expandable = bodyHtml.trim().length !== truncatedBodyHtml.trim().length

@@ -3,7 +3,7 @@ import Button from '@/lib/vendor/@material-ui/core/src/Button';
 import React from 'react';
 import { useNewEvents } from '../../lib/events/withNewEvents';
 import { useUpdateCurrentUser } from '../hooks/useUpdateCurrentUser';
-import { firstCommentAcknowledgeMessageCommentIdSetting } from '@/lib/instanceSettings';
+import { brandThemeSetting, firstCommentAcknowledgeMessageCommentIdSetting } from '@/lib/instanceSettings';
 import { AnalyticsContext } from "../../lib/analyticsEvents";
 import { useQuery } from "@/lib/crud/useQuery";
 import { gql } from "@/lib/generated/gql-codegen";
@@ -80,7 +80,8 @@ const NewUserGuidelinesDialog = ({onClose, post}: {
           {!html && !loading && <div className={classes.moderationGuidelines}><em>A moderator will need to review your account before your posts will appear publicly.</em></div>}
         </ContentStyles>
         <DialogActions>
-          {isLW && <Button>
+          {/* A LessWrong in-joke; deployments with their own brand don't show it */}
+          {isLW && !brandThemeSetting.get(forumType) && <Button>
             This was your father's rock
           </Button>}
           <Button onClick={handleClick}>
