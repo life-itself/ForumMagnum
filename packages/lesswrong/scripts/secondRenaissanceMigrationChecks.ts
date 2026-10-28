@@ -31,6 +31,12 @@ export const CATEGORY_TAGS: CategoryTag[] = [
   { discourseCategoryId: 23, name: "Embodied Knowing", slug: "embodied-knowing" },
 ];
 
+/**
+ * Starting karma for migrated members: upstream's automatic rate limits for
+ * new accounts apply below 5 karma (#61)
+ */
+export const MIGRATED_MEMBER_KARMA = 5;
+
 export interface SourceUser {
   id: number
   username: string
@@ -77,6 +83,8 @@ export interface TargetUser {
   email: string | null
   /** An account the member already had here, linked by claimDiscourseAccount */
   claimed: boolean
+  reviewed: boolean
+  karma: number
 }
 
 export interface TargetPost {
@@ -186,6 +194,8 @@ function checkUsers(source: SourceData, target: TargetData, problems: string[]):
     }
     const [user] = matches;
     userIdMap.set(sourceUser.id, user._id);
+    if (!user.reviewed) problems.push(`User ${sourceUser.username}: not marked as reviewed, so their posts and comments are held for approval`);
+    if (user.karma < MIGRATED_MEMBER_KARMA) problems.push(`User ${sourceUser.username}: karma is ${user.karma}, so new-account rate limits apply`);
     // Claimed accounts keep the name and email their owner chose
     if (user.claimed) continue;
     const expectedName = getExpectedDisplayName(sourceUser);
