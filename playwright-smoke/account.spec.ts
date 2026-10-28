@@ -48,6 +48,9 @@ async function fillPostEditor(page: Page, { title, body }: { title?: string, bod
     await page.keyboard.press("Backspace");
     await page.keyboard.type(body);
     await expect(editor).toContainText(body);
+    // The editor syncs text to the collaboration server in the background;
+    // saving straight away can store the post without it
+    await page.waitForTimeout(3000);
   }
 }
 
@@ -115,18 +118,23 @@ test("create, edit and delete a draft", async ({ page, context }) => {
     await page.goto("/newPost");
     await page.waitForURL(/\/editPost\?postId=/);
     postId = new URL(page.url()).searchParams.get("postId");
+
+    // Saving a draft opens its "[Draft]" post page
     await fillPostEditor(page, { title: `Smoke test draft ${id}`, body: `Draft body ${id}` });
     await saveDraft(page);
     await dismissNewUserDialog(page);
-    await expect(page.getByText(/saved/i).first()).toBeVisible();
+    await page.waitForURL(/\/posts\//);
+    await expect(page.getByText(`Smoke test draft ${id}`).first()).toBeVisible();
+    await expect(page.getByText(`Draft body ${id}`).first(), "the draft's body text should be saved").toBeVisible();
 
+    // Edit the body, and check the edit is there when the editor reopens
     await page.goto(`/editPost?postId=${postId}`);
     await expect(page.getByPlaceholder("Post title")).toHaveValue(`Smoke test draft ${id}`);
     await fillPostEditor(page, { body: `Edited draft body ${id}` });
     await saveDraft(page);
-
+    await page.waitForURL(/\/posts\//);
     await page.goto(`/editPost?postId=${postId}`);
-    await expect(page.getByText(`Edited draft body ${id}`)).toBeVisible();
+    await expect(page.getByText(`Edited draft body ${id}`).first(), "the edited body should be saved").toBeVisible();
   } finally {
     if (postId) await deletePost(context, postId);
   }
