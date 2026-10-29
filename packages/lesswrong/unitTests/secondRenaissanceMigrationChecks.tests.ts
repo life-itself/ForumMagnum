@@ -34,7 +34,7 @@ function makeSource(): SourceData {
 }
 
 function comment(_id: string, discoursePostId: string, userId: string, day: number, parentCommentId: string | null, topLevelCommentId: string | null) {
-  return { _id, discoursePostId, postId: "post10", userId, postedAt: date(day), parentCommentId, topLevelCommentId, deleted: false, hasContents: true };
+  return { _id, discoursePostId, postId: "post10", userId, postedAt: date(day), parentCommentId, topLevelCommentId, deleted: false, hasContents: true, hasSelfVote: true };
 }
 
 function makeTarget(): TargetData {
@@ -47,7 +47,7 @@ function makeTarget(): TargetData {
     otherAccounts: [],
     posts: [{
       _id: "post10", discourseTopicId: "10", discourseOpeningPostId: "100", title: "Hello", postedAt: date(1),
-      userId: "userAlice", draft: false, deletedDraft: false, hasContents: true, commentCount: 4, forumCommentCount: 0, tagSlugs: ["general"],
+      userId: "userAlice", draft: false, deletedDraft: false, hasContents: true, hasSelfVote: true, commentCount: 4, forumCommentCount: 0, tagSlugs: ["general"],
     }],
     comments: [
       comment("c101", "101", "userBob", 2, null, null),
@@ -91,7 +91,6 @@ describe('checkSecondRenaissanceMigration', () => {
     expect(problems).toContainEqual(expect.stringMatching(/title is "Bye"/));
     expect(problems).toContainEqual(expect.stringMatching(/Topic 10 .*postedAt/));
     expect(problems).toContainEqual(expect.stringMatching(/Topic 10 .*wrong author/));
-    expect(problems).toContainEqual(expect.stringMatching(/draft or deleted/));
     expect(problems).toContainEqual(expect.stringMatching(/post has no content/));
     expect(problems).toContainEqual(expect.stringMatching(/missing tag "general"/));
   });
@@ -104,6 +103,23 @@ describe('checkSecondRenaissanceMigration', () => {
     expect(problems).toContainEqual(expect.stringMatching(/Reply 103 .*wrong parent comment/));
     expect(problems).toContainEqual(expect.stringMatching(/Reply 103 .*wrong top-level comment/));
     expect(problems).toContainEqual(expect.stringMatching(/Reply 104 .*wrong parent comment/));
+  });
+
+  it('notes posts their authors unpublished, without failing', () => {
+    const target = makeTarget();
+    target.posts[0] = { ...target.posts[0], draft: true };
+    const result = checkSecondRenaissanceMigration(makeSource(), target);
+    expect(result.problems).toEqual([]);
+    expect(result.notes).toContainEqual(expect.stringMatching(/Topic 10 .*unpublished by its author/));
+  });
+
+  it('reports content missing its self-vote', () => {
+    const target = makeTarget();
+    target.posts[0] = { ...target.posts[0], hasSelfVote: false };
+    target.comments[0] = { ...target.comments[0], hasSelfVote: false };
+    const problems = getProblems(target);
+    expect(problems).toContainEqual(expect.stringMatching(/Topic 10 .*missing its author's self-vote/));
+    expect(problems).toContainEqual(expect.stringMatching(/Reply 101 .*missing its author's self-vote/));
   });
 
   it('reports wrong comment fields', () => {
