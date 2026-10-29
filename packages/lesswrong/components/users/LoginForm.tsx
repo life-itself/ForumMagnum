@@ -3,7 +3,6 @@ import React, { useCallback, useRef, useState } from 'react';
 import { reCaptchaSiteKey } from '../../lib/instanceSettings';
 import { useMutation } from "@apollo/client/react";
 import { gql } from '@/lib/generated/gql-codegen';
-import { useMessages } from '../common/withMessages';
 import { getUserABTestKey } from '../../lib/abTestImpl';
 import { useClientId } from '../hooks/useClientId.ts';
 import { useLocation } from '../../lib/routeUtil';
@@ -43,11 +42,25 @@ const styles = defineStyles('LoginForm', (theme: ThemeType) => ({
     height: 32,
     marginTop: 16,
     cursor: 'pointer',
-    fontSize: '1rem'
+    fontSize: '1rem',
+    '&:hover': {
+      background: theme.palette.grey[300],
+    },
+    '&:active': {
+      background: theme.palette.grey[400],
+    },
+    '&:disabled': {
+      cursor: 'default',
+      opacity: 0.7,
+    },
   }, 
   error: {
     padding: 8,
     color: theme.palette.error.main 
+  },
+  confirmation: {
+    padding: 8,
+    color: theme.palette.text.normal,
   },
   options: {
     display: 'flex',
@@ -115,7 +128,6 @@ const LoginForm = ({ startingState = "login", returnTo, autoFocus = false }: {
   const [username, setUsername] = useState<string>("")
   const [password, setPassword] = useState<string>("")
   const [email, setEmail] = useState<string>("")
-  const { flash } = useMessages();
   const [currentAction, setCurrentAction] = useState<possibleActions>(startingState)
   const [subscribeToCurated, setSubscribeToCurated] = useState<boolean>(hasSubscribeToCuratedCheckbox)
 
@@ -150,6 +162,8 @@ const LoginForm = ({ startingState = "login", returnTo, autoFocus = false }: {
   `), { errorPolicy: 'all' })
 
   const [displayedError, setDisplayedError] = useState<string|null>(null);
+  const [resetConfirmation, setResetConfirmation] = useState<string|null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const clientId = useClientId();
 
   const showError = (error: ErrorLike) => {
@@ -159,13 +173,33 @@ const LoginForm = ({ startingState = "login", returnTo, autoFocus = false }: {
   const loginSuccess = useCallback(() => {
     if (returnTo) {
       window.location.href = sanitizeLoginReturnTo(returnTo);
+    } else if (pathname.startsWith("/resetPassword")) {
+      // Reloading would show the used reset link again
+      window.location.href = "/";
     } else {
       location.reload()
     }
-  }, [returnTo])
+  }, [returnTo, pathname])
+
+  const switchAction = (action: possibleActions) => {
+    setCurrentAction(action);
+    setDisplayedError(null);
+    setResetConfirmation(null);
+  }
 
   const submitFunction = async (e: AnyBecauseTodo) => {
     e.preventDefault();
+    setSubmitting(true);
+    setDisplayedError(null);
+    setResetConfirmation(null);
+    try {
+      await submitAction();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const submitAction = async () => {
     const signupAbTestKey = getUserABTestKey({clientId});
 
     if (currentAction === 'login') {
@@ -201,7 +235,7 @@ const LoginForm = ({ startingState = "login", returnTo, autoFocus = false }: {
         showError(error);
       }
       if (data?.resetPassword) {
-        flash(data?.resetPassword)
+        setResetConfirmation(data.resetPassword)
       }
     }
   }
@@ -231,15 +265,21 @@ const LoginForm = ({ startingState = "login", returnTo, autoFocus = false }: {
           onChange={event => setPassword(event.target.value)}
         />
       </>}
-      <input type="submit" className={classes.submit} value={currentActionToButtonText[currentAction]} />
+      <input
+        type="submit"
+        className={classes.submit}
+        disabled={submitting}
+        value={submitting && currentAction === "pwReset" ? "Sending…" : currentActionToButtonText[currentAction]}
+      />
+      {resetConfirmation && <div className={classes.confirmation}>{resetConfirmation}</div>}
       
       {currentAction === "signup" && hasSubscribeToCuratedCheckbox &&
         <SignupSubscribeToCurated defaultValue={subscribeToCurated} onChange={(checked: boolean) => setSubscribeToCurated(checked)} />
       }
       <div className={classes.options}>
-        {currentAction !== "login" && <span className={classes.toggle} onClick={() => setCurrentAction("login")}> Log In </span>}
-        {currentAction !== "signup" && <span className={classes.toggle} onClick={() => setCurrentAction("signup")}> Sign Up </span>}
-        {currentAction !== "pwReset" && <span className={classes.toggle} onClick={() => setCurrentAction("pwReset")}> Reset Password </span>}
+        {currentAction !== "login" && <span className={classes.toggle} onClick={() => switchAction("login")}> Log In </span>}
+        {currentAction !== "signup" && <span className={classes.toggle} onClick={() => switchAction("signup")}> Sign Up </span>}
+        {currentAction !== "pwReset" && <span className={classes.toggle} onClick={() => switchAction("pwReset")}> Reset Password </span>}
       </div>
       <>
         <div className={classes.oAuthComment}>...or continue with</div>

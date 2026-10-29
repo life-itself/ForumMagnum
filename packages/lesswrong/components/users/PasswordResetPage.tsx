@@ -8,6 +8,7 @@ import { useMutation } from "@apollo/client/react";
 import { gql } from '@/lib/generated/gql-codegen';
 import { useStyles } from '../hooks/useStyles';
 import { defineStyles } from '../hooks/defineStyles';
+import LoginForm from './LoginForm';
 
 const styles = defineStyles("PasswordResetPage", (theme: ThemeType) => ({
   root: {
@@ -57,6 +58,8 @@ const PasswordResetPage = ({token}: {token: string}) => {
       <Button onClick={submitFunction} className={classes.submit}>Set New Password</Button>
     </>}
     {useTokenResult && ResultComponent && <ResultComponent {...useTokenResult.props}/>}
+    {/* Log in here and go to the home page, rather than staying on the used reset link */}
+    {useTokenResult && <LoginForm returnTo="/" />}
   </SingleColumnSection>
 }
 
