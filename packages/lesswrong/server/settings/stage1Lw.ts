@@ -86,6 +86,18 @@ const stage1LwSettings = merge({
         showToLoggedOut: true,
       },
       {
+        name: "forum-archive",
+        label: "Recommended",
+        description: "A random pick of well-liked posts you haven't read yet.",
+        showToLoggedOut: true,
+      },
+      {
+        name: "forum-top",
+        label: "Most popular",
+        description: "The highest-scoring posts of all time.",
+        showToLoggedOut: true,
+      },
+      {
         name: "forum-bookmarks",
         label: "Bookmarks",
         description: "A list of posts you saved because you wanted to have them findable later.",
