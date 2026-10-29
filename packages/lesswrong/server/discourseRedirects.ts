@@ -17,10 +17,29 @@ const DISCOURSE_ORIGIN = "https://forum.secondrenaissance.net";
 
 const isNumeric = (segment: string | undefined) => !!segment && /^\d+$/.test(segment);
 
-/** /t/<slug>/<topicId>[/<postNumber>] or /t/<topicId>[/<postNumber>] */
+/**
+ * A migrated post found by its old Discourse topic slug, for links without a
+ * topic ID. Post slugs here are truncated versions of the same title slug, so
+ * this picks the longest post slug the old one starts with.
+ */
+async function findPostByDiscourseSlug(discourseSlug: string): Promise<DbPost | null> {
+  return getSqlClientOrThrow("read").oneOrNone(`
+    -- discourseRedirects.postBySlug
+    SELECT * FROM "Posts"
+    WHERE "legacyData" ? 'secondRenaissanceDiscourseTopicId' AND NOT draft AND NOT "deletedDraft"
+      AND LENGTH(slug) >= 10 AND $1 LIKE slug || '%'
+    ORDER BY LENGTH(slug) DESC
+    LIMIT 1
+  `, [discourseSlug.toLowerCase()]);
+}
+
+/** /t/<slug>/<topicId>[/<postNumber>], /t/<topicId>[/<postNumber>] or /t/<slug> */
 export async function getDiscourseTopicRedirect(segments: string[], forumType: ForumTypeString): Promise<string> {
   const [topicId, postNumber] = isNumeric(segments[0]) ? segments : segments.slice(1);
-  if (!isNumeric(topicId)) return getSiteUrl(forumType);
+  if (!isNumeric(topicId)) {
+    const post = segments[0] ? await findPostByDiscourseSlug(segments[0]) : null;
+    return post ? postGetAbsolutePageUrl(post, forumType) : getSiteUrl(forumType);
+  }
   const db = getSqlClientOrThrow("read");
 
   if (isNumeric(postNumber) && postNumber !== "1") {
