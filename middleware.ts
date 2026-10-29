@@ -4,6 +4,7 @@ import { getMarkdownPathname } from './packages/lesswrong/lib/routeChecks/markdo
 import { STATUS_CODE_LOOPBACK_HEADER, findStatusCodeInStream, fixLoopbackUrl } from './packages/lesswrong/lib/routeChecks/statusCodeLoopback';
 import { buildCachedPostPath, getCacheablePostPagePath, normalizeAcceptEncoding } from './packages/lesswrong/lib/postPageCache/cachedPostRoute';
 import { postPageCacheConfig } from './packages/lesswrong/lib/postPageCache/config';
+import { getLegacyForumRedirectUrl, parseLegacyHostnames } from './packages/lesswrong/lib/legacyForumRedirect';
 
 // These need to be defined here instead of imported from @/lib/cookies/cookies
 // because that import chain contains a transitive import of lodash, which
@@ -39,6 +40,13 @@ export async function middleware(request: NextRequest) {
   const isForwarded = request.headers.get(STATUS_CODE_LOOPBACK_HEADER);
   if (isForwarded) {
     return NextResponse.next();
+  }
+
+  // Requests on a previous forum's hostnames (LEGACY_FORUM_HOSTNAMES) move to this site
+  const requestHostname = (request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? request.nextUrl.hostname).split(":")[0];
+  const legacyRedirectUrl = getLegacyForumRedirectUrl(request.nextUrl, requestHostname, parseLegacyHostnames(process.env.LEGACY_FORUM_HOSTNAMES), process.env.SITE_URL ?? "");
+  if (legacyRedirectUrl) {
+    return NextResponse.redirect(legacyRedirectUrl, 301);
   }
   
   const markdownNegotiation = getMarkdownNegotiationMode(request);
