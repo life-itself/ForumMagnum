@@ -44,6 +44,7 @@ async function loadTarget(): Promise<TargetData> {
       p."legacyData"->>'secondRenaissanceDiscourseTopicId' AS "discourseTopicId",
       p."legacyData"->>'secondRenaissanceDiscourseOpeningPostId' AS "discourseOpeningPostId",
       p.title, p."postedAt", p."userId", p.draft, p."deletedDraft", p."commentCount",
+      EXISTS (SELECT 1 FROM "Votes" v WHERE v."documentId" = p._id AND v."userId" = p."userId" AND NOT v.cancelled) AS "hasSelfVote",
       COALESCE(TRIM(r.html) <> '', FALSE) AS "hasContents",
       (
         SELECT COUNT(*)::int FROM "Comments" c
@@ -62,6 +63,7 @@ async function loadTarget(): Promise<TargetData> {
     -- verifySecondRenaissanceMigration.loadTarget comments
     SELECT c._id, c."legacyData"->>'secondRenaissanceDiscoursePostId' AS "discoursePostId",
       c."postId", c."userId", c."postedAt", c."parentCommentId", c."topLevelCommentId", c.deleted,
+      EXISTS (SELECT 1 FROM "Votes" v WHERE v."documentId" = c._id AND v."userId" = c."userId" AND NOT v.cancelled) AS "hasSelfVote",
       COALESCE(TRIM(r.html) <> '', FALSE) AS "hasContents"
     FROM "Comments" c
     LEFT JOIN "Revisions" r ON r._id = c.contents_latest
@@ -70,10 +72,11 @@ async function loadTarget(): Promise<TargetData> {
   return { users, otherAccounts, posts, comments };
 }
 
-function printResult({ expected, migrated, problems }: MigrationCheckResult): void {
+function printResult({ expected, migrated, problems, notes }: MigrationCheckResult): void {
   console.log(`Users:    ${migrated.users} migrated, ${expected.users} expected`);
   console.log(`Posts:    ${migrated.posts} migrated, ${expected.posts} expected`);
   console.log(`Comments: ${migrated.comments} migrated, ${expected.comments} expected`);
+  for (const note of notes) console.log(`Note: ${note}`);
   if (problems.length) {
     console.log(`\n${problems.length} problem(s):`);
     for (const problem of problems) console.log(`- ${problem}`);

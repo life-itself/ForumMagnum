@@ -97,6 +97,8 @@ export interface TargetPost {
   draft: boolean
   deletedDraft: boolean
   hasContents: boolean
+  /** Has its author's own upvote, which every post starts with on the forum */
+  hasSelfVote: boolean
   commentCount: number
   /** Comments written on the forum rather than migrated */
   forumCommentCount: number
@@ -113,6 +115,7 @@ export interface TargetComment {
   topLevelCommentId: string | null
   deleted: boolean
   hasContents: boolean
+  hasSelfVote: boolean
 }
 
 export interface OtherAccount {
@@ -132,6 +135,8 @@ export interface MigrationCheckResult {
   expected: { users: number, posts: number, comments: number }
   migrated: { users: number, posts: number, comments: number }
   problems: string[]
+  /** Expected differences worth knowing about, such as posts members unpublished themselves */
+  notes: string[]
 }
 
 const EMAIL_PATTERN = /\S+@\S+\.\S+/;
@@ -229,6 +234,7 @@ function checkPosts(
   userIdMap: Map<number, string>,
   target: TargetData,
   problems: string[],
+  notes: string[],
 ): Map<number, string> {
   const targetByTopicId = groupBy(target.posts, p => p.discourseTopicId);
   const tagSlugByCategory = new Map(CATEGORY_TAGS.map(c => [c.discourseCategoryId, c.slug]));
@@ -253,8 +259,11 @@ function checkPosts(
     }
     if (post.userId !== userIdMap.get(opening.userId)) problems.push(`${label}: wrong author`);
     if (post.discourseOpeningPostId !== String(opening.id)) problems.push(`${label}: wrong opening post ID`);
-    if (post.draft || post.deletedDraft) problems.push(`${label}: post is a draft or deleted`);
+    // Members can move their own posts back to drafts or delete them; the
+    // importer only republishes posts it unpublished itself
+    if (post.draft || post.deletedDraft) notes.push(`${label}: unpublished by its author`);
     if (!post.hasContents) problems.push(`${label}: post has no content`);
+    if (!post.hasSelfVote) problems.push(`${label}: post is missing its author's self-vote, so it ranks as 0`);
     const expectedCommentCount = (repliesByTopic.get(topic.id)?.length ?? 0) + post.forumCommentCount;
     if (post.commentCount !== expectedCommentCount) {
       problems.push(`${label}: comment count is ${post.commentCount}, expected ${expectedCommentCount}`);
@@ -326,6 +335,7 @@ function checkComments(
     }
     if (comment.deleted) problems.push(`${label}: comment is deleted`);
     if (!comment.hasContents) problems.push(`${label}: comment has no content`);
+    if (!comment.hasSelfVote) problems.push(`${label}: comment is missing its author's self-vote`);
 
     const { parentId, rootId } = nesting.get(reply.id)!;
     const expectedParentId = getMigratedCommentId(parentId, targetByPostId);
@@ -368,10 +378,11 @@ function checkNothingExtra(source: SourceData, publicTopicIds: Set<number>, publ
  */
 export function checkSecondRenaissanceMigration(source: SourceData, target: TargetData): MigrationCheckResult {
   const problems: string[] = [];
+  const notes: string[] = [];
   const { publicTopics, publicTopicIds, openingPosts, publicReplies, repliesByTopic } = selectPublicContent(source);
 
   const userIdMap = checkUsers(source, target, problems);
-  const postIdMap = checkPosts(publicTopics, openingPosts, repliesByTopic, userIdMap, target, problems);
+  const postIdMap = checkPosts(publicTopics, openingPosts, repliesByTopic, userIdMap, target, problems, notes);
   checkComments(publicReplies, userIdMap, postIdMap, target, problems);
   checkNothingExtra(source, publicTopicIds, new Set(publicReplies.map(r => r.id)), target, problems);
 
@@ -379,5 +390,6 @@ export function checkSecondRenaissanceMigration(source: SourceData, target: Targ
     expected: { users: source.users.length, posts: publicTopics.length, comments: publicReplies.length },
     migrated: { users: target.users.length, posts: target.posts.length, comments: target.comments.length },
     problems,
+    notes,
   };
 }

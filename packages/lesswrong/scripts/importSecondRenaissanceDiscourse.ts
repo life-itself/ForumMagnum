@@ -4,6 +4,10 @@ import { randomId } from "@/lib/random";
 import { slugify } from "@/lib/utils/slugify";
 import { getSqlClientOrThrow } from "@/server/sql/sqlClient";
 import { getPgPromiseLib } from "@/server/sqlConnection";
+import { getCollection } from "@/server/collections/allCollections";
+import { recalculateDocumentScores } from "@/server/voteServer";
+import { createAnonymousContext } from "@/server/vulcan-lib/createContexts";
+import { executePromiseQueue } from "@/lib/utils/asyncUtils";
 import { adminAccountSetting } from "@/lib/instanceSettings";
 import type { ChangeMetrics } from "@/server/collections/revisions/collection";
 import { getNextVersionAfterSemver, htmlToChangeMetrics } from "@/server/editor/utils";
@@ -46,6 +50,8 @@ import { verifySecondRenaissanceMigration } from "./verifySecondRenaissanceMigra
  * - recomputes comment counts and per-user post and comment counts;
  * - marks migrated members as reviewed with starting karma, so they aren't
  *   treated as brand-new accounts (syncMemberTrust);
+ * - gives migrated posts and comments their author's self-upvote, and
+ *   recalculates their scores (syncSelfVotes, recalculateScores);
  * - tags posts with their Discourse category (createSecondRenaissanceCategoryTags);
  * - finishes with verifySecondRenaissanceMigration.
  * A second run with an unchanged backup makes no changes.
@@ -133,6 +139,7 @@ interface ImportCounts {
   commentsUpdated: number
   commentsUnpublished: number
   countsUpdated: number
+  selfVotesAdded: number
 }
 
 interface RevisionRow {
@@ -177,6 +184,7 @@ const emptyCounts = (): ImportCounts => ({
   postsCreated: 0, postsUpdated: 0, postsUnpublished: 0,
   commentsCreated: 0, commentsUpdated: 0, commentsUnpublished: 0,
   countsUpdated: 0,
+  selfVotesAdded: 0,
 });
 
 const jsonColumn = (name: string) => ({ name, mod: ":json" as const, cast: "jsonb" });
@@ -195,6 +203,11 @@ const commentColumns = new pgp.helpers.ColumnSet([
   "_id", "postId", "userId", "createdAt", "postedAt", "parentCommentId", "topLevelCommentId",
   "contents_latest", jsonColumn("contents"), jsonColumn("legacyData"), "directChildrenCount", "descendentCount",
 ], { table: "Comments" });
+
+const voteColumns = new pgp.helpers.ColumnSet([
+  "_id", "documentId", "collectionName", "userId", { name: "authorIds", cast: "text[]" },
+  "voteType", "power", "afPower", "votedAt", "createdAt",
+], { table: "Votes" });
 
 const revisionColumns = new pgp.helpers.ColumnSet([
   "_id", "documentId", "collectionName", "fieldName", "editedAt", "updateType", "version", "userId",
@@ -628,6 +641,32 @@ async function syncMemberTrust(tx: Transaction, counts: ImportCounts): Promise<v
   counts.usersUpdated += result.rowCount;
 }
 
+/**
+ * On the forum every post and comment starts with its author's own small
+ * upvote, which the "magic" ranking relies on (#69). Migrated content was
+ * imported without one, so add it, in the same shape the site creates.
+ * Scores are recalculated from the votes after the import (recalculateScores).
+ */
+async function syncSelfVotes(tx: Transaction, counts: ImportCounts): Promise<void> {
+  const missing: { documentId: string, collectionName: "Posts" | "Comments", userId: string, postedAt: Date }[] = await tx.any(`
+    -- importSecondRenaissanceDiscourse missing self-votes
+    SELECT d._id AS "documentId", d."collectionName", d."userId", d."postedAt" FROM (
+      SELECT _id, 'Posts' AS "collectionName", "userId", "postedAt" FROM "Posts" WHERE "legacyData" ? 'secondRenaissanceDiscourseTopicId'
+      UNION ALL
+      SELECT _id, 'Comments', "userId", "postedAt" FROM "Comments" WHERE "legacyData" ? 'secondRenaissanceDiscoursePostId'
+    ) d
+    WHERE NOT EXISTS (
+      SELECT 1 FROM "Votes" v WHERE v."documentId" = d._id AND v."userId" = d."userId" AND NOT v.cancelled
+    )
+  `);
+  const votes = missing.map(({ documentId, collectionName, userId, postedAt }) => ({
+    _id: randomId(), documentId, collectionName, userId, authorIds: [userId],
+    voteType: "smallUpvote", power: 1, afPower: 1, votedAt: postedAt, createdAt: postedAt,
+  }));
+  await insertBatches(tx, voteColumns, votes);
+  counts.selfVotesAdded += votes.length;
+}
+
 async function syncCounts(tx: Transaction, counts: ImportCounts): Promise<void> {
   const posts = await tx.result(`
     -- importSecondRenaissanceDiscourse post counts
@@ -671,8 +710,37 @@ async function runImport(tx: Transaction, source: SourceData, content: PublicCon
   await syncPosts(tx, content, existing.posts, ids, counts);
   await syncComments(tx, content, existing.comments, ids, counts);
   await syncMemberTrust(tx, counts);
+  await syncSelfVotes(tx, counts);
   await syncCounts(tx, counts);
   return counts;
+}
+
+/**
+ * Recalculates the scores of migrated posts and comments whose base score no
+ * longer matches their votes (e.g. after syncSelfVotes), with the site's own
+ * recalculateDocumentScores, as scripts/recalculateDocumentScoresOnCollection
+ * does. Outside the import transaction: it reads votes through the app.
+ */
+async function recalculateScores(): Promise<void> {
+  const db = getSqlClientOrThrow();
+  const context = createAnonymousContext();
+  for (const [collectionName, legacyKey] of [["Posts", "secondRenaissanceDiscourseTopicId"], ["Comments", "secondRenaissanceDiscoursePostId"]] as const) {
+    const ids: { _id: string }[] = await db.any(`
+      -- importSecondRenaissanceDiscourse stale scores
+      SELECT d._id FROM "${collectionName}" d
+      WHERE d."legacyData" ? '${legacyKey}' AND d."baseScore" IS DISTINCT FROM (
+        SELECT COALESCE(SUM(v.power), 0) FROM "Votes" v WHERE v."documentId" = d._id AND NOT v.cancelled
+      )
+    `);
+    const collection = getCollection(collectionName);
+    const documents = await collection.find({ _id: { $in: ids.map(({ _id }) => _id) } }).fetch();
+    await executePromiseQueue(documents.map(document => async () => {
+      const { baseScore, voteCount, afVoteCount, score, extendedScore, afExtendedScore } =
+        await recalculateDocumentScores(document, collectionName, context);
+      await collection.rawUpdateOne({ _id: document._id }, { $set: { baseScore, voteCount, afVoteCount, score, extendedScore, afExtendedScore } });
+    }), 5);
+    console.log(`Recalculated the scores of ${documents.length} ${collectionName.toLowerCase()}`);
+  }
 }
 
 export async function importSecondRenaissanceDiscourse({ execute = false, allowRemote = false, uploadsDir }: {
@@ -709,6 +777,7 @@ export async function importSecondRenaissanceDiscourse({ execute = false, allowR
     console.log("Dry run: nothing was written. Category tags and verification run after a real import.");
     return counts;
   }
+  await recalculateScores();
   await createSecondRenaissanceCategoryTags({ execute: true });
   await verifySecondRenaissanceMigration();
   return counts;
