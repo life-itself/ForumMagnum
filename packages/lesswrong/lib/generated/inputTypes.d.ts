@@ -148,6 +148,8 @@ interface Query {
   lWEvents: MultiLWEventOutput | null;
   llmConversation: SingleLlmConversationOutput | null;
   llmConversations: MultiLlmConversationOutput | null;
+  llmRun: SingleLlmRunOutput | null;
+  llmRuns: MultiLlmRunOutput | null;
   localgroup: SingleLocalgroupOutput | null;
   localgroups: MultiLocalgroupOutput | null;
   message: SingleMessageOutput | null;
@@ -1990,6 +1992,8 @@ interface Comment {
   tagCommentType: TagCommentType;
   userId: string;
   user: User | null;
+  llmRunId: string | null;
+  llmReplyPublishedAt: Date | null;
   userIP: string | null;
   userAgent: string | null;
   referrer: string | null;
@@ -2447,6 +2451,13 @@ interface CommentsModeratorCommentsInput {
   authorIsUnreviewed?: boolean | null;
 }
 
+interface CommentsLlmRepliesInput {
+  userId?: string | null;
+  commentIds?: Array<string> | null;
+  minimumKarma?: number | null;
+  authorIsUnreviewed?: boolean | null;
+}
+
 interface CommentsDebateResponsesInput {
   userId?: string | null;
   commentIds?: Array<string> | null;
@@ -2533,6 +2544,7 @@ interface CommentSelector {
   tagSubforumComments: CommentsTagSubforumCommentsInput | null;
   latestSubforumDiscussion: CommentsLatestSubforumDiscussionInput | null;
   moderatorComments: CommentsModeratorCommentsInput | null;
+  llmReplies: CommentsLlmRepliesInput | null;
   debateResponses: CommentsDebateResponsesInput | null;
   recentDebateResponses: CommentsRecentDebateResponsesInput | null;
   alignmentSuggestedComments: CommentsAlignmentSuggestedCommentsInput | null;
@@ -2565,9 +2577,12 @@ interface Conversation {
   messageCount: number;
   moderator: boolean | null;
   awaitingModeratorReply: boolean | null;
+  moderatorReplyWaitingSince: Date | null;
   archivedByIds: Array<string>;
   archivedBy: Array<User>;
   latestMessage: Message | null;
+  rejectedPosts: Array<Post> | null;
+  rejectedComments: Array<Comment> | null;
   rejectionAppeal: RejectionAppeal | null;
   hasUnreadMessages: boolean | null;
 }
@@ -3006,6 +3021,22 @@ interface AdminHomePageDesign {
   ownerSlug: string;
 }
 
+interface LlmRunTranscriptEntry {
+  _id: string;
+  createdAt: Date;
+  llmRunId: string;
+  attempt: number;
+  index: number;
+  type: string;
+  text: string | null;
+  toolCallId: string | null;
+  toolName: string | null;
+  query: string | null;
+  url: string | null;
+  title: string | null;
+  extra: any;
+}
+
 interface RejectionAppeal {
   _id: string;
   createdAt: Date;
@@ -3289,6 +3320,37 @@ interface LlmMessage {
   conversationId: string | null;
   role: string | null;
   content: string | null;
+}
+
+interface LlmRun {
+  _id: string;
+  createdAt: Date;
+  invocationContext: string;
+  post: Post | null;
+  modelName: string;
+  gatewayModelId: string;
+  status: string;
+  systemPrompt: string;
+  contextMessage: string | null;
+  transcriptEntries: Array<LlmRunTranscriptEntry>;
+  response: string | null;
+  error: string | null;
+  completedAt: Date | null;
+  triggerCommentId: string | null;
+  replyCommentId: string | null;
+}
+
+interface SingleLlmRunOutput {
+  result: LlmRun | null;
+}
+
+interface LlmRunSelector {
+  default: EmptyViewInput | null;
+}
+
+interface MultiLlmRunOutput {
+  results: Array<LlmRun>;
+  totalCount: number | null;
 }
 
 interface Localgroup {
@@ -7236,6 +7298,7 @@ interface User {
   showHideKarmaOption: boolean | null;
   showPostAuthorCard: boolean | null;
   hideIntercom: boolean;
+  hailboxOptIn: boolean | null;
   markDownPostEditor: boolean;
   hideElicitPredictions: boolean | null;
   hideAFNonMemberInitialWarning: boolean | null;
@@ -7368,6 +7431,7 @@ interface User {
   reviewedByUserId: string | null;
   reviewedByUser: User | null;
   isReviewed: boolean | null;
+  hasApprovedContent: boolean | null;
   reviewedAt: Date | null;
   afKarma: number;
   voteCount: number | null;
@@ -7742,6 +7806,7 @@ interface CreateCommentDataInput {
   tagId?: string | null;
   tagCommentType?: TagCommentType | null;
   userId?: string | null;
+  llmRunId?: string | null;
   authorIsUnreviewed?: boolean | null;
   answer?: boolean | null;
   parentAnswerId?: string | null;
@@ -7790,6 +7855,7 @@ interface UpdateCommentDataInput {
   postedAt?: Date | null;
   postId?: string | null;
   tagId?: string | null;
+  llmReplyPublishedAt?: Date | null;
   authorIsUnreviewed?: boolean | null;
   answer?: boolean | null;
   shortform?: boolean | null;
@@ -9101,6 +9167,7 @@ interface CreateUserDataInput {
   showHideKarmaOption?: boolean | null;
   showPostAuthorCard?: boolean | null;
   hideIntercom?: boolean | null;
+  hailboxOptIn?: boolean | null;
   noSingleLineComments?: boolean | null;
   noCollapseCommentsPosts?: boolean | null;
   noCollapseCommentsFrontpage?: boolean | null;
@@ -9264,6 +9331,7 @@ interface UpdateUserDataInput {
   showHideKarmaOption?: boolean | null;
   showPostAuthorCard?: boolean | null;
   hideIntercom?: boolean | null;
+  hailboxOptIn?: boolean | null;
   markDownPostEditor?: boolean | null;
   hideElicitPredictions?: boolean | null;
   hideAFNonMemberInitialWarning?: boolean | null;
@@ -9726,6 +9794,7 @@ interface GraphQLTypeMap {
   CommentsTagSubforumCommentsInput: CommentsTagSubforumCommentsInput;
   CommentsLatestSubforumDiscussionInput: CommentsLatestSubforumDiscussionInput;
   CommentsModeratorCommentsInput: CommentsModeratorCommentsInput;
+  CommentsLlmRepliesInput: CommentsLlmRepliesInput;
   CommentsDebateResponsesInput: CommentsDebateResponsesInput;
   CommentsRecentDebateResponsesInput: CommentsRecentDebateResponsesInput;
   CommentsAlignmentSuggestedCommentsInput: CommentsAlignmentSuggestedCommentsInput;
@@ -9799,6 +9868,7 @@ interface GraphQLTypeMap {
   HomePageDesignSummary: HomePageDesignSummary;
   MarketplaceHomePageDesign: MarketplaceHomePageDesign;
   AdminHomePageDesign: AdminHomePageDesign;
+  LlmRunTranscriptEntry: LlmRunTranscriptEntry;
   RejectionAppeal: RejectionAppeal;
   SingleRejectionAppealOutput: SingleRejectionAppealOutput;
   RejectionAppealSelector: RejectionAppealSelector;
@@ -9841,6 +9911,10 @@ interface GraphQLTypeMap {
   MultiLlmConversationInput: MultiLlmConversationInput;
   MultiLlmConversationOutput: MultiLlmConversationOutput;
   LlmMessage: LlmMessage;
+  LlmRun: LlmRun;
+  SingleLlmRunOutput: SingleLlmRunOutput;
+  LlmRunSelector: LlmRunSelector;
+  MultiLlmRunOutput: MultiLlmRunOutput;
   Localgroup: Localgroup;
   SingleLocalgroupInput: SingleLocalgroupInput;
   SingleLocalgroupOutput: SingleLocalgroupOutput;
@@ -10464,6 +10538,8 @@ interface CreateInputsByCollectionName {
   LinkPreviewCaches: never;
   LlmConversations: never;
   LlmMessages: never;
+  LlmRunTranscriptEntries: never;
+  LlmRuns: never;
   LoginTokens: never;
   MailgunValidations: never;
   ManifoldProbabilitiesCaches: never;
@@ -10565,6 +10641,8 @@ interface UpdateInputsByCollectionName {
   LegacyData: never;
   LinkPreviewCaches: never;
   LlmMessages: never;
+  LlmRunTranscriptEntries: never;
+  LlmRuns: never;
   LoginTokens: never;
   MailgunValidations: never;
   ManifoldProbabilitiesCaches: never;

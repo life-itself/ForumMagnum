@@ -305,6 +305,9 @@ export const routeTrie = {
             },
             "replyToComment": {
               "hasRoute": true
+            },
+            "resolveCommentThread": {
+              "hasRoute": true
             }
           },
           "lowerCase": {
@@ -318,7 +321,8 @@ export const routeTrie = {
             "ping": "ping",
             "replacetext": "replaceText",
             "replacewidget": "replaceWidget",
-            "replytocomment": "replyToComment"
+            "replytocomment": "replyToComment",
+            "resolvecommentthread": "resolveCommentThread"
           }
         },
         "autocomplete": {
@@ -411,6 +415,16 @@ export const routeTrie = {
             "publish": "publish"
           },
           "hasRoute": true
+        },
+        "llmRuns": {
+          "staticChildren": {
+            "run": {
+              "hasRoute": true
+            }
+          },
+          "lowerCase": {
+            "run": "run"
+          }
         },
         "mcp": {
           "hasRoute": true
@@ -657,6 +671,7 @@ export const routeTrie = {
         "health": "health",
         "homedesignchat": "homeDesignChat",
         "homedesigns": "homeDesigns",
+        "llmruns": "llmRuns",
         "mcp": "mcp",
         "notificationcount": "notificationCount",
         "notificationevents": "notificationEvents",
@@ -1000,6 +1015,17 @@ export const routeTrie = {
     "library": {
       "hasPage": true
     },
+    "llmReplies": {
+      "hasPage": true
+    },
+    "llmRuns": {
+      "dynamicChild": {
+        "paramName": "runId",
+        "child": {
+          "hasPage": true
+        }
+      }
+    },
     "login": {
       "hasPage": true
     },
@@ -1117,9 +1143,6 @@ export const routeTrie = {
         "revoke": "revoke",
         "token": "token"
       }
-    },
-    "out": {
-      "hasRoute": true
     },
     "pastEvents": {
       "hasPage": true
@@ -1526,6 +1549,8 @@ export const routeTrie = {
     "item": "item",
     "leaderboard": "leaderboard",
     "library": "library",
+    "llmreplies": "llmReplies",
+    "llmruns": "llmRuns",
     "login": "login",
     "loginnotice": "loginNotice",
     "logout": "logout",
@@ -1541,7 +1566,6 @@ export const routeTrie = {
     "nominations": "nominations",
     "notifications": "notifications",
     "oauth": "oauth",
-    "out": "out",
     "pastevents": "pastEvents",
     "payments": "payments",
     "petrov": "petrov",

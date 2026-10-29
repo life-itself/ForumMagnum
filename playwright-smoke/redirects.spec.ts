@@ -28,7 +28,8 @@ test("an old upload link goes to Cloudinary", async ({ request }) => {
 });
 
 test("an unknown old topic goes to the home page", async ({ request }) => {
-  expect(new URL(await redirectTarget(request, "/t/not-a-topic/999999")).pathname).toBe("/");
+  // The local dev server sends a relative location; deployments send an absolute one
+  expect(new URL(await redirectTarget(request, "/t/not-a-topic/999999"), "http://localhost").pathname).toBe("/");
 });
 
 test("an old profile link reaches the member's profile", async ({ page }) => {
