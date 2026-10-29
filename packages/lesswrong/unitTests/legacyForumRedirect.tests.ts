@@ -32,6 +32,11 @@ describe('getLegacyForumRedirectUrl', () => {
     expect(redirect("https://forum.secondrenaissance.net/my/preferences")).toBe(`${site}/`);
   });
 
+  it("doesn't redirect the old forum's service worker scripts", () => {
+    expect(redirect("https://forum.secondrenaissance.net/service-worker.js")).toBeNull();
+    expect(redirect("https://forum.secondrenaissance.net/service-worker-1a2b3c.js")).toBeNull();
+  });
+
   it('does nothing without a site URL', () => {
     const url = new URL("https://forum.secondrenaissance.net/");
     expect(getLegacyForumRedirectUrl(url, url.hostname, legacyHosts, "")).toBeNull();

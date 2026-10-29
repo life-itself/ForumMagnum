@@ -4,7 +4,7 @@ import { getMarkdownPathname } from './packages/lesswrong/lib/routeChecks/markdo
 import { STATUS_CODE_LOOPBACK_HEADER, findStatusCodeInStream, fixLoopbackUrl } from './packages/lesswrong/lib/routeChecks/statusCodeLoopback';
 import { buildCachedPostPath, getCacheablePostPagePath, normalizeAcceptEncoding } from './packages/lesswrong/lib/postPageCache/cachedPostRoute';
 import { postPageCacheConfig } from './packages/lesswrong/lib/postPageCache/config';
-import { getLegacyForumRedirectUrl, parseLegacyHostnames } from './packages/lesswrong/lib/legacyForumRedirect';
+import { LEGACY_SERVICE_WORKER_PATH, getLegacyForumRedirectUrl, isLegacyHostname, parseLegacyHostnames } from './packages/lesswrong/lib/legacyForumRedirect';
 
 // These need to be defined here instead of imported from @/lib/cookies/cookies
 // because that import chain contains a transitive import of lodash, which
@@ -44,7 +44,12 @@ export async function middleware(request: NextRequest) {
 
   // Requests on a previous forum's hostnames (LEGACY_FORUM_HOSTNAMES) move to this site
   const requestHostname = (request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? request.nextUrl.hostname).split(":")[0];
-  const legacyRedirectUrl = getLegacyForumRedirectUrl(request.nextUrl, requestHostname, parseLegacyHostnames(process.env.LEGACY_FORUM_HOSTNAMES), process.env.SITE_URL ?? "");
+  const legacyHostnames = parseLegacyHostnames(process.env.LEGACY_FORUM_HOSTNAMES);
+  if (isLegacyHostname(requestHostname, legacyHostnames) && LEGACY_SERVICE_WORKER_PATH.test(request.nextUrl.pathname)) {
+    // Replace the old forum's service worker with one that removes itself
+    return NextResponse.rewrite(new URL("/service-worker.js", request.url));
+  }
+  const legacyRedirectUrl = getLegacyForumRedirectUrl(request.nextUrl, requestHostname, legacyHostnames, process.env.SITE_URL ?? "");
   if (legacyRedirectUrl) {
     return NextResponse.redirect(legacyRedirectUrl, 301);
   }

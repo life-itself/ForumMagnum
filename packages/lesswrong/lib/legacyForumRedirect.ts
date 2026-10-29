@@ -10,6 +10,13 @@
  * pages (/latest, /categories, ...) go to the home page.
  */
 
+/**
+ * The old forum's service worker scripts. Browsers ignore a redirected service
+ * worker script, so these are answered with public/service-worker.js, which
+ * removes the old worker, instead of being redirected.
+ */
+export const LEGACY_SERVICE_WORKER_PATH = /^\/service-worker[\w.-]*\.js$/;
+
 const KEPT_PATHS = [/^\/t\//, /^\/c\//, /^\/u\//, /^\/uploads\//, /^\/about\/?$/, /^\/faq\/?$/];
 
 const RENAMED_PATHS: Record<string, string> = {
@@ -21,8 +28,13 @@ export function parseLegacyHostnames(value: string | undefined): string[] {
 }
 
 /** The URL on this forum for a request to an old forum hostname, or null for any other request */
+export function isLegacyHostname(requestHostname: string, legacyHostnames: string[]): boolean {
+  return legacyHostnames.includes(requestHostname.toLowerCase());
+}
+
 export function getLegacyForumRedirectUrl(requestUrl: URL, requestHostname: string, legacyHostnames: string[], siteUrl: string): string | null {
-  if (!siteUrl || !legacyHostnames.includes(requestHostname.toLowerCase())) return null;
+  if (!siteUrl || !isLegacyHostname(requestHostname, legacyHostnames)) return null;
+  if (LEGACY_SERVICE_WORKER_PATH.test(requestUrl.pathname)) return null;
   const target = new URL(siteUrl);
   const { pathname, search, searchParams } = requestUrl;
   if (KEPT_PATHS.some(pattern => pattern.test(pathname))) {
