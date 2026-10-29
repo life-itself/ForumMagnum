@@ -69,10 +69,18 @@ export interface SourcePost {
   cooked: string
 }
 
+export interface SourceLike {
+  /** Discourse post ID of the liked topic opening post or reply */
+  postId: number
+  userId: number
+  createdAt: Date
+}
+
 export interface SourceData {
   users: SourceUser[]
   topics: SourceTopic[]
   posts: SourcePost[]
+  likes: SourceLike[]
 }
 
 export interface TargetUser {
@@ -99,6 +107,8 @@ export interface TargetPost {
   hasContents: boolean
   /** Has its author's own upvote, which every post starts with on the forum */
   hasSelfVote: boolean
+  /** Everyone who has voted on it, including votes later taken back */
+  voterIds: string[]
   commentCount: number
   /** Comments written on the forum rather than migrated */
   forumCommentCount: number
@@ -116,6 +126,7 @@ export interface TargetComment {
   deleted: boolean
   hasContents: boolean
   hasSelfVote: boolean
+  voterIds: string[]
 }
 
 export interface OtherAccount {
@@ -168,6 +179,18 @@ export function selectPublicContent(source: SourceData): PublicContent {
     publicReplies,
     repliesByTopic: groupBy(publicReplies, r => r.topicId),
   };
+}
+
+/**
+ * Likes that become upvotes on the forum (#66): those on public topics and
+ * replies, by members other than the author
+ */
+export function selectPublicLikes(source: SourceData, content: PublicContent): { like: SourceLike, post: SourcePost }[] {
+  const publicPosts = new Map([...content.openingPosts.values(), ...content.publicReplies].map(p => [p.id, p]));
+  return source.likes.flatMap(like => {
+    const post = publicPosts.get(like.postId);
+    return post && like.userId > 0 && like.userId !== post.userId ? [{ like, post }] : [];
+  });
 }
 
 export function groupBy<T, K>(items: T[], getKey: (item: T) => K): Map<K, T[]> {
@@ -345,6 +368,26 @@ function checkComments(
   }
 }
 
+/** Every public Discourse like should be an upvote by the same member (#66) */
+function checkLikes(source: SourceData, content: PublicContent, userIdMap: Map<number, string>, target: TargetData, problems: string[]): void {
+  const votersByDiscoursePostId = new Map<string, Set<string>>([
+    ...target.posts.flatMap(p => p.discourseOpeningPostId ? [[p.discourseOpeningPostId, new Set(p.voterIds)] as const] : []),
+    ...target.comments.map(c => [c.discoursePostId, new Set(c.voterIds)] as const),
+  ]);
+  const missingByPost = new Map<SourcePost, number>();
+  for (const { like, post } of selectPublicLikes(source, content)) {
+    const voters = votersByDiscoursePostId.get(String(post.id));
+    // Missing users and records are reported by the other checks
+    const voterId = userIdMap.get(like.userId);
+    if (!voters || !voterId || voters.has(voterId)) continue;
+    missingByPost.set(post, (missingByPost.get(post) ?? 0) + 1);
+  }
+  for (const [post, missing] of missingByPost) {
+    const label = post.postNumber === 1 ? `Topic ${post.topicId}` : `Reply ${post.id} (topic ${post.topicId} #${post.postNumber})`;
+    problems.push(`${label}: ${missing} Discourse like(s) aren't upvotes`);
+  }
+}
+
 /**
  * Why a migrated record's source shouldn't have been migrated. Records the
  * importer has already unpublished (draft posts, deleted comments) are fine.
@@ -379,11 +422,13 @@ function checkNothingExtra(source: SourceData, publicTopicIds: Set<number>, publ
 export function checkSecondRenaissanceMigration(source: SourceData, target: TargetData): MigrationCheckResult {
   const problems: string[] = [];
   const notes: string[] = [];
-  const { publicTopics, publicTopicIds, openingPosts, publicReplies, repliesByTopic } = selectPublicContent(source);
+  const content = selectPublicContent(source);
+  const { publicTopics, publicTopicIds, openingPosts, publicReplies, repliesByTopic } = content;
 
   const userIdMap = checkUsers(source, target, problems);
   const postIdMap = checkPosts(publicTopics, openingPosts, repliesByTopic, userIdMap, target, problems, notes);
   checkComments(publicReplies, userIdMap, postIdMap, target, problems);
+  checkLikes(source, content, userIdMap, target, problems);
   checkNothingExtra(source, publicTopicIds, new Set(publicReplies.map(r => r.id)), target, problems);
 
   return {
