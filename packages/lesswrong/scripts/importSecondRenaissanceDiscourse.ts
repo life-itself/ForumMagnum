@@ -17,7 +17,9 @@ import {
   MIGRATED_MEMBER_KARMA,
   getExpectedDisplayName,
   getReplyNesting,
+  groupBy,
   selectPublicContent,
+  selectPublicLikes,
   type PublicContent,
   type ReplyNesting,
   type SourceData,
@@ -52,6 +54,8 @@ import { verifySecondRenaissanceMigration } from "./verifySecondRenaissanceMigra
  *   treated as brand-new accounts (syncMemberTrust);
  * - gives migrated posts and comments their author's self-upvote, and
  *   recalculates their scores (syncSelfVotes, recalculateScores);
+ * - turns Discourse likes into upvotes by the same members, adding to the
+ *   authors' karma (syncLikeVotes);
  * - tags posts with their Discourse category (createSecondRenaissanceCategoryTags);
  * - finishes with verifySecondRenaissanceMigration.
  * A second run with an unchanged backup makes no changes.
@@ -140,6 +144,7 @@ interface ImportCounts {
   commentsUnpublished: number
   countsUpdated: number
   selfVotesAdded: number
+  likeVotesAdded: number
 }
 
 interface RevisionRow {
@@ -185,6 +190,7 @@ const emptyCounts = (): ImportCounts => ({
   commentsCreated: 0, commentsUpdated: 0, commentsUnpublished: 0,
   countsUpdated: 0,
   selfVotesAdded: 0,
+  likeVotesAdded: 0,
 });
 
 const jsonColumn = (name: string) => ({ name, mod: ":json" as const, cast: "jsonb" });
@@ -667,6 +673,51 @@ async function syncSelfVotes(tx: Transaction, counts: ImportCounts): Promise<voi
   counts.selfVotesAdded += votes.length;
 }
 
+/**
+ * Discourse likes become small upvotes by the same member (#66), so scores
+ * reflect what members liked, and adds them to the author's karma, as voting
+ * on the forum does. A like is skipped if the member has already voted on it
+ * here, including a vote they later took back, so re-runs add only new likes.
+ */
+async function syncLikeVotes(tx: Transaction, source: SourceData, content: PublicContent, ids: IdMaps, counts: ImportCounts): Promise<void> {
+  const likes = selectPublicLikes(source, content).map(({ like, post }) => ({
+    documentId: post.postNumber === 1 ? ids.postIds.get(post.topicId)! : ids.commentIds.get(post.id)!,
+    collectionName: post.postNumber === 1 ? "Posts" : "Comments",
+    userId: ids.userIds.get(like.userId)!,
+    likedAt: like.createdAt,
+  }));
+  if (!likes.length) return;
+  const documents: { _id: string, userId: string, voterIds: string[] }[] = await tx.any(`
+    -- importSecondRenaissanceDiscourse liked documents
+    SELECT d._id, d."userId", ARRAY(SELECT v."userId" FROM "Votes" v WHERE v."documentId" = d._id) AS "voterIds"
+    FROM (
+      SELECT _id, "userId" FROM "Posts" WHERE _id IN ($(ids:csv))
+      UNION ALL
+      SELECT _id, "userId" FROM "Comments" WHERE _id IN ($(ids:csv))
+    ) d
+  `, { ids: [...new Set(likes.map(l => l.documentId))] });
+  const documentsById = new Map(documents.map(d => [d._id, d]));
+  const votes = likes.flatMap(({ documentId, collectionName, userId, likedAt }) => {
+    const document = documentsById.get(documentId)!;
+    if (document.userId === userId || document.voterIds.includes(userId)) return [];
+    return [{
+      _id: randomId(), documentId, collectionName, userId, authorIds: [document.userId],
+      voteType: "smallUpvote", power: 1, afPower: 1, votedAt: likedAt, createdAt: likedAt,
+    }];
+  });
+  await insertBatches(tx, voteColumns, votes);
+  const karmaByAuthor = [...groupBy(votes, v => v.authorIds[0])].map(([_id, authorVotes]) => ({ _id, karma: authorVotes.length }));
+  if (karmaByAuthor.length) {
+    await tx.none(`
+      -- importSecondRenaissanceDiscourse like karma
+      UPDATE "Users" u SET karma = COALESCE(u.karma, 0) + v.karma::int
+      FROM (VALUES ${pgp.helpers.values(karmaByAuthor, ["_id", "karma"])}) AS v(_id, karma)
+      WHERE u._id = v._id
+    `);
+  }
+  counts.likeVotesAdded += votes.length;
+}
+
 async function syncCounts(tx: Transaction, counts: ImportCounts): Promise<void> {
   const posts = await tx.result(`
     -- importSecondRenaissanceDiscourse post counts
@@ -711,6 +762,7 @@ async function runImport(tx: Transaction, source: SourceData, content: PublicCon
   await syncComments(tx, content, existing.comments, ids, counts);
   await syncMemberTrust(tx, counts);
   await syncSelfVotes(tx, counts);
+  await syncLikeVotes(tx, source, content, ids, counts);
   await syncCounts(tx, counts);
   return counts;
 }
@@ -741,6 +793,12 @@ async function recalculateScores(): Promise<void> {
     }), 5);
     console.log(`Recalculated the scores of ${documents.length} ${collectionName.toLowerCase()}`);
   }
+  // Karma thresholds (e.g. on All Posts) filter on a post's highest score
+  await db.none(`
+    -- importSecondRenaissanceDiscourse max scores
+    UPDATE "Posts" SET "maxBaseScore" = "baseScore"
+    WHERE "legacyData" ? 'secondRenaissanceDiscourseTopicId' AND "baseScore" > COALESCE("maxBaseScore", 0)
+  `);
 }
 
 export async function importSecondRenaissanceDiscourse({ execute = false, allowRemote = false, uploadsDir }: {

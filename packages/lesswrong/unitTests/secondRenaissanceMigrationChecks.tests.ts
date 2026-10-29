@@ -30,15 +30,22 @@ function makeSource(): SourceData {
       { id: 200, topicId: 20, postNumber: 1, replyToPostNumber: null, userId: 1, createdAt: date(6), hidden: false, userDeleted: false, cooked: "<p>Text</p>" },
       { id: 300, topicId: 30, postNumber: 1, replyToPostNumber: null, userId: 2, createdAt: date(7), hidden: false, userDeleted: false, cooked: "<p>Text</p>" },
     ],
+    // Bob likes the opening post and Alice likes reply #2; the like on the
+    // private message isn't migrated
+    likes: [
+      { postId: 100, userId: 2, createdAt: date(8) },
+      { postId: 101, userId: 1, createdAt: date(8) },
+      { postId: 300, userId: 1, createdAt: date(8) },
+    ],
   };
 }
 
 function comment(_id: string, discoursePostId: string, userId: string, day: number, parentCommentId: string | null, topLevelCommentId: string | null) {
-  return { _id, discoursePostId, postId: "post10", userId, postedAt: date(day), parentCommentId, topLevelCommentId, deleted: false, hasContents: true, hasSelfVote: true };
+  return { _id, discoursePostId, postId: "post10", userId, postedAt: date(day), parentCommentId, topLevelCommentId, deleted: false, hasContents: true, hasSelfVote: true, voterIds: [userId] };
 }
 
 function makeTarget(): TargetData {
-  return {
+  const target: TargetData = {
     users: [
       { _id: "userSystem", discourseUserId: "-1", displayName: "system", email: null, claimed: false, reviewed: true, karma: 5 },
       { _id: "userAlice", discourseUserId: "1", displayName: "Alice A", email: "alice@example.com", claimed: false, reviewed: true, karma: 12 },
@@ -47,7 +54,7 @@ function makeTarget(): TargetData {
     otherAccounts: [],
     posts: [{
       _id: "post10", discourseTopicId: "10", discourseOpeningPostId: "100", title: "Hello", postedAt: date(1),
-      userId: "userAlice", draft: false, deletedDraft: false, hasContents: true, hasSelfVote: true, commentCount: 4, forumCommentCount: 0, tagSlugs: ["general"],
+      userId: "userAlice", draft: false, deletedDraft: false, hasContents: true, hasSelfVote: true, voterIds: ["userAlice", "userBob"], commentCount: 4, forumCommentCount: 0, tagSlugs: ["general"],
     }],
     comments: [
       comment("c101", "101", "userBob", 2, null, null),
@@ -56,6 +63,8 @@ function makeTarget(): TargetData {
       comment("c104", "104", "userBob", 5, null, null),
     ],
   };
+  target.comments[0].voterIds.push("userAlice");
+  return target;
 }
 
 function getProblems(target: TargetData, source = makeSource()) {
@@ -120,6 +129,25 @@ describe('checkSecondRenaissanceMigration', () => {
     const problems = getProblems(target);
     expect(problems).toContainEqual(expect.stringMatching(/Topic 10 .*missing its author's self-vote/));
     expect(problems).toContainEqual(expect.stringMatching(/Reply 101 .*missing its author's self-vote/));
+  });
+
+  it('reports likes that are not upvotes', () => {
+    const target = makeTarget();
+    target.posts[0] = { ...target.posts[0], voterIds: ["userAlice"] };
+    target.comments[0] = { ...target.comments[0], voterIds: ["userBob"] };
+    const problems = getProblems(target);
+    expect(problems).toContainEqual("Topic 10: 1 Discourse like(s) aren't upvotes");
+    expect(problems).toContainEqual("Reply 101 (topic 10 #2): 1 Discourse like(s) aren't upvotes");
+  });
+
+  it('ignores likes on content that is not migrated', () => {
+    const source = makeSource();
+    source.posts[4] = { ...source.posts[4], hidden: true };
+    source.likes.push({ postId: 104, userId: 1, createdAt: date(9) });
+    const target = makeTarget();
+    target.comments = target.comments.filter(c => c._id !== "c104");
+    target.posts[0] = { ...target.posts[0], commentCount: 3 };
+    expect(getProblems(target, source)).toEqual([]);
   });
 
   it('reports wrong comment fields', () => {

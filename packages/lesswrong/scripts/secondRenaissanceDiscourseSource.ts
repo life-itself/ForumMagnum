@@ -51,10 +51,17 @@ export async function loadDiscourseSource(): Promise<SourceData> {
         JOIN topics t ON t.id = p.topic_id
         WHERE t.deleted_at IS NULL AND p.deleted_at IS NULL AND p.post_type = 1
       `);
+      const likes = await t.any(`
+        SELECT a.post_id AS "postId", a.user_id AS "userId", ${utcTimestamp("a.created_at")} AS "createdAt"
+        FROM post_actions a
+        JOIN post_action_types pat ON pat.id = a.post_action_type_id
+        WHERE pat.name_key = 'like' AND a.deleted_at IS NULL
+      `);
       return {
         users: users.map(u => ({ ...u, createdAt: new Date(u.createdAt) })),
         topics,
         posts: posts.map(p => ({ ...p, createdAt: new Date(p.createdAt) })),
+        likes: likes.map(l => ({ ...l, createdAt: new Date(l.createdAt) })),
       };
     });
   } finally {

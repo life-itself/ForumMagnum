@@ -11,7 +11,7 @@ import {
 /**
  * Read-only check that the migrated Second Renaissance data matches the
  * Discourse backup (issue #36): users, posts, comments, authors, dates, comment
- * nesting, comment counts and category tags, and that no private messages or
+ * nesting, comment counts, category tags and likes, and that no private messages or
  * Staff topics were migrated. Run it after every migration run. Throws if anything is wrong.
  *
  * Reads a local `discourse_backup*` database (DISCOURSE_SOURCE_URL, localhost
@@ -45,6 +45,7 @@ async function loadTarget(): Promise<TargetData> {
       p."legacyData"->>'secondRenaissanceDiscourseOpeningPostId' AS "discourseOpeningPostId",
       p.title, p."postedAt", p."userId", p.draft, p."deletedDraft", p."commentCount",
       EXISTS (SELECT 1 FROM "Votes" v WHERE v."documentId" = p._id AND v."userId" = p."userId" AND NOT v.cancelled) AS "hasSelfVote",
+      ARRAY(SELECT DISTINCT v."userId" FROM "Votes" v WHERE v."documentId" = p._id) AS "voterIds",
       COALESCE(TRIM(r.html) <> '', FALSE) AS "hasContents",
       (
         SELECT COUNT(*)::int FROM "Comments" c
@@ -64,6 +65,7 @@ async function loadTarget(): Promise<TargetData> {
     SELECT c._id, c."legacyData"->>'secondRenaissanceDiscoursePostId' AS "discoursePostId",
       c."postId", c."userId", c."postedAt", c."parentCommentId", c."topLevelCommentId", c.deleted,
       EXISTS (SELECT 1 FROM "Votes" v WHERE v."documentId" = c._id AND v."userId" = c."userId" AND NOT v.cancelled) AS "hasSelfVote",
+      ARRAY(SELECT DISTINCT v."userId" FROM "Votes" v WHERE v."documentId" = c._id) AS "voterIds",
       COALESCE(TRIM(r.html) <> '', FALSE) AS "hasContents"
     FROM "Comments" c
     LEFT JOIN "Revisions" r ON r._id = c.contents_latest
