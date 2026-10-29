@@ -18,7 +18,7 @@ import { userIsAdmin } from '../../lib/vulcan-users/permissions';
 import TabPicker, { TabRecord } from './TabPicker';
 import { useCookiesWithConsent } from '../hooks/useCookiesWithConsent';
 import { RECOMBEE_SETTINGS_COOKIE, SELECTED_FRONTPAGE_TAB_COOKIE } from '../../lib/cookies/cookies';
-import { RecombeeConfiguration } from '../../lib/collections/users/recommendationSettings';
+import { RecombeeConfiguration, RecommendationsAlgorithm } from '../../lib/collections/users/recommendationSettings';
 import isEqual from 'lodash/isEqual';
 import { capitalize } from "../../lib/vulcan-lib/utils";
 import SettingsButton from "../icons/SettingsButton";
@@ -31,6 +31,7 @@ import RecombeePostsListSettings from "../posts/RecombeePostsListSettings";
 import BookmarksList from "../bookmarks/BookmarksList";
 import ContinueReadingList from "../recommendations/ContinueReadingList";
 import WelcomePostItem from "../recommendations/WelcomePostItem";
+import RecommendationsList from "../recommendations/RecommendationsList";
 import { SuspenseWrapper } from './SuspenseWrapper';
 import { defineStyles, useStyles } from '../hooks/useStyles';
 import PostsLoading from '../posts/PostsLoading';
@@ -199,6 +200,19 @@ export const filterSettingsToggleLabels = {
 const advancedSortingText = "Advanced Sorting/Filtering";
 
 const defaultLimit = 13;
+
+// Recommendations without Recombee: a random pick of well-voted posts the
+// reader hasn't read, weighted towards higher scores
+const archiveRecommendationsAlgorithm: RecommendationsAlgorithm = {
+  method: "sample",
+  count: 10,
+  scoreOffset: 0,
+  scoreExponent: 2,
+  minimumBaseScore: 2,
+  includePersonal: true,
+  excludeDefaultRecommendations: true,
+  onlyUnread: true,
+};
 
 function getDefaultDesktopFilterSettingsVisibility(currentUser: UsersCurrent | null) {
   if (!currentUser) {
@@ -713,7 +727,24 @@ const LWHomePosts = ({ children, }: {
                   hideHiddenFrontPagePosts
                 >
                   <Link to={"/allPosts"}>{advancedSortingText}</Link>
-                </PostsList2> 
+                </PostsList2>
+              </AnalyticsContext>}
+
+              {/* HIGHEST SCORING POSTS */}
+              {(selectedTab === 'forum-top') && <AnalyticsContext feedType={selectedTab}>
+                <PostsList2
+                  terms={{view: "top", forum: true, limit: defaultLimit}}
+                  alwaysShowLoadMore
+                  animateLoadMore
+                  hideHiddenFrontPagePosts
+                >
+                  <Link to={"/allPosts"}>{advancedSortingText}</Link>
+                </PostsList2>
+              </AnalyticsContext>}
+
+              {/* RECOMMENDATIONS WITHOUT RECOMBEE */}
+              {(selectedTab === 'forum-archive') && <AnalyticsContext feedType={selectedTab}>
+                <RecommendationsList algorithm={archiveRecommendationsAlgorithm} />
               </AnalyticsContext>}
 
             </AllowHidingFrontPagePostsContext.Provider>
