@@ -4,7 +4,7 @@ import RSS from 'rss';
 import { Comments } from '../server/collections/comments/collection';
 import { commentGetAbsolutePageUrlFromDB } from '../lib/collections/comments/helpers';
 import { postGetAbsolutePageUrl } from '../lib/collections/posts/helpers';
-import { forumTitleSetting, siteUrlSetting, taglineSetting } from '../lib/instanceSettings';
+import { faviconUrlSetting, forumTitleSetting, siteUrlSetting, taglineSetting } from '../lib/instanceSettings';
 import { rssTermsToUrl, RSSTerms } from '../lib/rss_urls';
 import { accessFilterMultiple } from '../lib/utils/schemaUtils';
 import { getCommentParentTitle } from '@/lib/notificationDataHelpers';
@@ -26,7 +26,7 @@ export const getMeta = (url: string, context: ResolverContext) => {
     description: taglineSetting.get(context),
     feed_url: url,
     site_url: siteUrl,
-    image_url: "https://res.cloudinary.com/lesswrong-2-0/image/upload/v1497915096/favicon_lncumn.ico"
+    image_url: new URL(faviconUrlSetting.get(context), siteUrl).toString(),
   };
 };
 
