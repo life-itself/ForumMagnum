@@ -20,6 +20,9 @@ export const KNOWN = {
   oldProfilePath: "/u/robertbunge",
   oldUploadPath: "/uploads/db6903/original/1X/1fd5eb10318e1b7ef220281f4d617ac4d9be5793.png",
   searchTerm: "oasis",
+  /** The old forum's domains, which point at the production site */
+  legacyHosts: ["forum.secondrenaissance.net", "forum.lifeitself.org"],
+  productionUrl: "https://forum.seedsofrenaissance.org",
 };
 
 /**

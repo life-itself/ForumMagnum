@@ -32,6 +32,15 @@ test("an unknown old topic goes to the home page", async ({ request }) => {
   expect(new URL(await redirectTarget(request, "/t/not-a-topic/999999"), "http://localhost").pathname).toBe("/");
 });
 
+for (const host of KNOWN.legacyHosts) {
+  test(`${host} serves HTTPS and redirects old links`, async ({ request, baseURL }) => {
+    test.skip(baseURL !== KNOWN.productionUrl, "The old domains only point at production");
+    const response = await request.get(`https://${host}${KNOWN.oldTopicPath}`);
+    expect(response.ok()).toBe(true);
+    expect(response.url()).toContain(KNOWN.newTopicPathPrefix);
+  });
+}
+
 test("an old profile link reaches the member's profile", async ({ page }) => {
   await page.goto(KNOWN.oldProfilePath);
   await expect(page).toHaveURL(/\/users\//);
