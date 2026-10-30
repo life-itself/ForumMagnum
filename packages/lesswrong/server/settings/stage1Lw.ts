@@ -135,6 +135,9 @@ const mergedSettings = merge(stage1LwSettings, {
   logoUrl:`${siteUrl}${brandAssetsPath}/seeds-mark-colour-512.png`,
   siteImage: `${siteUrl}${brandAssetsPath}/seeds-mark-colour-512.png`,
   intercomAppId: "",
+  // With LessWrong's 50-karma bar, about half the migrated members got the
+  // new-user sprout; without it, only accounts from the last week do
+  newUserIconKarmaThreshold: null,
   // Unsigned upload presets in the Seeds Cloudinary account, whose cloud name is
   // set by the NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME env var
   cloudinary: {

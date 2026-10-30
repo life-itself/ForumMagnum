@@ -7,6 +7,7 @@ import { getPgPromiseLib } from "@/server/sqlConnection";
 import { getCollection } from "@/server/collections/allCollections";
 import { recalculateDocumentScores } from "@/server/voteServer";
 import { createAnonymousContext } from "@/server/vulcan-lib/createContexts";
+import { cheerioParse } from "@/server/utils/htmlUtil";
 import { executePromiseQueue } from "@/lib/utils/asyncUtils";
 import { adminAccountSetting } from "@/lib/instanceSettings";
 import type { ChangeMetrics } from "@/server/collections/revisions/collection";
@@ -25,7 +26,7 @@ import {
   type SourceData,
   type SourcePost,
 } from "./secondRenaissanceMigrationChecks";
-import { cleanDiscourseHtml, type DiscourseLinkTargets } from "./secondRenaissanceDiscourseHtml";
+import { DISCOURSE_ORIGIN, cleanDiscourseHtml, type DiscourseLinkTargets } from "./secondRenaissanceDiscourseHtml";
 import { replaceEmojiCodes } from "./secondRenaissanceDiscourseEmoji";
 import { findDiscourseUploadPaths, loadDiscourseUploads, mirrorDiscourseUploads } from "./secondRenaissanceDiscourseUploads";
 import { createSecondRenaissanceCategoryTags } from "./createSecondRenaissanceCategoryTags";
@@ -56,6 +57,7 @@ import { verifySecondRenaissanceMigration } from "./verifySecondRenaissanceMigra
  *   recalculates their scores (syncSelfVotes, recalculateScores);
  * - turns Discourse likes into upvotes by the same members, adding to the
  *   authors' karma (syncLikeVotes);
+ * - sets link-preview images for migrated posts (syncSocialPreviewImages);
  * - tags posts with their Discourse category (createSecondRenaissanceCategoryTags);
  * - finishes with verifySecondRenaissanceMigration.
  * A second run with an unchanged backup makes no changes.
@@ -76,6 +78,8 @@ const pgp = getPgPromiseLib();
 
 const ADVISORY_LOCK: [number, number] = [20261018, 35];
 const DRY_RUN_ROLLBACK = "Dry run: rolling back";
+/** The old forum was also served from forum.lifeitself.org, which some links use */
+const OLD_FORUM_ORIGINS = [DISCOURSE_ORIGIN, "https://forum.lifeitself.org"];
 
 type Transaction = ITask<{}>;
 
@@ -145,6 +149,7 @@ interface ImportCounts {
   countsUpdated: number
   selfVotesAdded: number
   likeVotesAdded: number
+  previewImagesUpdated: number
 }
 
 interface RevisionRow {
@@ -191,6 +196,7 @@ const emptyCounts = (): ImportCounts => ({
   countsUpdated: 0,
   selfVotesAdded: 0,
   likeVotesAdded: 0,
+  previewImagesUpdated: 0,
 });
 
 const jsonColumn = (name: string) => ({ name, mod: ":json" as const, cast: "jsonb" });
@@ -510,6 +516,35 @@ async function syncPosts(tx: Transaction, content: PublicContent, existing: Map<
   }
 }
 
+/**
+ * The forum sets a post's link-preview image to its first image when the post
+ * is saved (extractSocialPreviewImage), which raw imports skip. Fills it in
+ * for migrated posts that have none, and replaces previews still pointing at
+ * the old forum, whose images now live on Cloudinary. Posts with a preview
+ * image chosen by hand are left alone.
+ */
+async function syncSocialPreviewImages(tx: Transaction, counts: ImportCounts): Promise<void> {
+  const posts: { _id: string, previewUrl: string | null, html: string | null }[] = await tx.any(`
+    -- importSecondRenaissanceDiscourse preview images
+    SELECT p._id, p."socialPreviewImageAutoUrl" AS "previewUrl", r.html
+    FROM "Posts" p LEFT JOIN "Revisions" r ON r._id = p.contents_latest
+    WHERE p."legacyData" ? 'secondRenaissanceDiscourseTopicId'
+      AND p."socialPreview"->>'imageId' IS NULL
+      AND (COALESCE(p."socialPreviewImageAutoUrl", '') = '' OR p."socialPreviewImageAutoUrl" LIKE ANY($(oldForumPatterns)))
+  `, { oldForumPatterns: OLD_FORUM_ORIGINS.map(origin => `${origin}/%`) });
+  const updates = posts
+    .map(({ _id, previewUrl, html }) => ({ _id, previewUrl: previewUrl ?? "", firstImage: getFirstImageSrc(html) }))
+    .filter(({ previewUrl, firstImage }) => previewUrl !== firstImage);
+  for (const { _id, firstImage } of updates) {
+    await tx.none(`UPDATE "Posts" SET "socialPreviewImageAutoUrl" = $(firstImage) WHERE _id = $(_id)`, { _id, firstImage });
+  }
+  counts.previewImagesUpdated += updates.length;
+}
+
+function getFirstImageSrc(html: string | null): string {
+  return cheerioParse(html ?? "")("img").first().attr("src") ?? "";
+}
+
 /** Number of direct replies and of all descendants for each public reply */
 function getReplyCounts(nesting: Map<number, ReplyNesting>): Map<number, { children: number, descendants: number }> {
   const counts = new Map<number, { children: number, descendants: number }>();
@@ -759,6 +794,7 @@ async function runImport(tx: Transaction, source: SourceData, content: PublicCon
   await syncUsers(tx, source, existing.users, ids, counts);
   await syncProfileSlugs(tx, source, ids, counts);
   await syncPosts(tx, content, existing.posts, ids, counts);
+  await syncSocialPreviewImages(tx, counts);
   await syncComments(tx, content, existing.comments, ids, counts);
   await syncMemberTrust(tx, counts);
   await syncSelfVotes(tx, counts);
