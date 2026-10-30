@@ -52,7 +52,8 @@ import { verifySecondRenaissanceMigration } from "./verifySecondRenaissanceMigra
  *   public again;
  * - recomputes comment counts and per-user post and comment counts;
  * - marks migrated members as reviewed with starting karma, so they aren't
- *   treated as brand-new accounts (syncMemberTrust);
+ *   treated as brand-new accounts, and marks migrated posts as reviewed
+ *   (syncMemberTrust);
  * - gives migrated posts and comments their author's self-upvote, and
  *   recalculates their scores (syncSelfVotes, recalculateScores);
  * - turns Discourse likes into upvotes by the same members, adding to the
@@ -665,12 +666,13 @@ async function syncProfileSlugs(tx: Transaction, source: SourceData, ids: IdMaps
  * account, so their posts and comments aren't held for approval, and give
  * them enough karma to lift the limits on new accounts (3 comments a day,
  * 2 posts a week below 5 karma). Never lowers karma or changes an existing
- * reviewer.
+ * reviewer. Migrated posts are marked reviewed too, so they stay out of the
+ * moderators' unreviewed-posts queue; they're already on the frontpage.
  */
 async function syncMemberTrust(tx: Transaction, counts: ImportCounts): Promise<void> {
   const adminAccountId = adminAccountSetting.get("LessWrong")?._id;
   if (!adminAccountId) throw new Error("The adminAccount setting is required to mark migrated members as reviewed");
-  const result = await tx.result(`
+  const users = await tx.result(`
     -- importSecondRenaissanceDiscourse member trust
     UPDATE "Users" SET
       "reviewedByUserId" = COALESCE("reviewedByUserId", $(adminAccountId)),
@@ -679,7 +681,13 @@ async function syncMemberTrust(tx: Transaction, counts: ImportCounts): Promise<v
     WHERE "legacyData" ? 'secondRenaissanceDiscourseUserId'
       AND ("reviewedByUserId" IS NULL OR COALESCE(karma, 0) < $(startingKarma))
   `, { adminAccountId, startingKarma: MIGRATED_MEMBER_KARMA });
-  counts.usersUpdated += result.rowCount;
+  const posts = await tx.result(`
+    -- importSecondRenaissanceDiscourse post review
+    UPDATE "Posts" SET "reviewedByUserId" = $(adminAccountId)
+    WHERE "legacyData" ? 'secondRenaissanceDiscourseTopicId' AND "reviewedByUserId" IS NULL
+  `, { adminAccountId });
+  counts.usersUpdated += users.rowCount;
+  counts.postsUpdated += posts.rowCount;
 }
 
 /**
