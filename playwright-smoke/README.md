@@ -14,6 +14,7 @@ SMOKE_BASE_URL=http://localhost:3456 yarn smoke-test
 - The home page, a post page (including its image from Cloudinary), All Posts, Concepts, a tag page, About, FAQ, Contact and the login form all load.
 - Search finds posts and tags.
 - Old Discourse links redirect: topic, reply, category, upload, profile, and an unknown topic.
+- The old domains (forum.secondrenaissance.net, forum.lifeitself.org) have working certificates and redirect old links. Skipped unless testing production.
 - No console errors, and no requests to LessWrong or third-party services (Typekit, Intercom, LogRocket, …).
 
 **With a test account (writes, cleaned up afterwards):**
