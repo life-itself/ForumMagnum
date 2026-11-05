@@ -82,7 +82,8 @@ export function getForumType(themeOptions: AbstractThemeOptions, actualForumType
   return (themeOptions?.siteThemeOverride && themeOptions.siteThemeOverride[actualForumType]) || actualForumType;
 }
 
-export const defaultThemeOptions: AbstractThemeOptions = {name: "default"};
+// Seeds of Renaissance follows the device's light or dark preference (#85)
+export const defaultThemeOptions: AbstractThemeOptions = {name: "auto"};
 
 const deserializeThemeOptions = (themeOptions: object | string): AbstractThemeOptions => {
   if (typeof themeOptions === "string") {

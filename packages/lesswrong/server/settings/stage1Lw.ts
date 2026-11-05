@@ -118,7 +118,7 @@ const stage1LwSettings = merge({
     thermometerGoal3Amount: 0,
     thermometerBgUrl: "",
   },
-  ultraFeedEnabled: false,
+  ultraFeedEnabled: true,
 }, sharedSettings);
 
 // sharedSettings wins the merge above, so keys it also sets (LessWrong's logo,
