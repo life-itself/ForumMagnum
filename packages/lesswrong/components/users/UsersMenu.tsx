@@ -17,6 +17,7 @@ import { DisableNoKibitzContext } from '../common/sharedContexts';
 import { useAdminToggle } from '../admin/useAdminToggle';
 import { isMobile } from '../../lib/utils/isMobile'
 import { tagUserHasSufficientKarma } from '../../lib/collections/tags/helpers';
+import { hiddenMenuTabsSetting } from '@/lib/instanceSettings';
 import LWPopper from "../common/LWPopper";
 import LWTooltip from "../common/LWTooltip";
 import ThemePickerMenu from "../themes/ThemePickerMenu";
@@ -210,7 +211,7 @@ const UsersMenu = () => {
                   </NewWikiTagMenu>
                 ) : null}
 
-                {userCanPost(currentUser) ? <DropdownItem
+                {userCanPost(currentUser) && !hiddenMenuTabsSetting.get(forumType).includes("events") ? <DropdownItem
                   title="New Event"
                   to="/newPost?eventForm=true"
                 /> : null}
