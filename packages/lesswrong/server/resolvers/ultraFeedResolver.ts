@@ -25,6 +25,7 @@ import merge from 'lodash/merge';
 import mergeWith from 'lodash/mergeWith';
 import cloneDeep from 'lodash/cloneDeep';
 import { backgroundTask } from "../utils/backgroundTask";
+import { recombeeEnabledSetting } from "@/lib/instanceSettings";
 import { serverCaptureEvent } from "../analytics/serverAnalyticsWriter";
 import { userIsAdmin, userIsAdminOrMod } from '@/lib/vulcan-users/permissions';
 import {
@@ -629,7 +630,9 @@ export const ultraFeedGraphQLQueries = {
     }
 
     const parsedSettings = parseUltraFeedSettings(settingsJson);
-    const sourceWeights = parsedSettings.sourceWeights;
+    const sourceWeights = recombeeEnabledSetting.get(context)
+      ? parsedSettings.sourceWeights
+      : { ...parsedSettings.sourceWeights, 'recombee-lesswrong-ultrafeed': 0 };
     const incognitoMode = parsedSettings.incognitoMode;
     const filterSettings = await validateFrontpageFilterSettings(args.filterSettings, context)
       ?? currentUser?.frontpageFilterSettings

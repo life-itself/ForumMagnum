@@ -10,6 +10,7 @@ import { createAnonymousContext } from "@/server/vulcan-lib/createContexts";
 import { cheerioParse } from "@/server/utils/htmlUtil";
 import { executePromiseQueue } from "@/lib/utils/asyncUtils";
 import { adminAccountSetting } from "@/lib/instanceSettings";
+import { defaultVotingSystem } from "@/lib/collections/posts/helpers";
 import type { ChangeMetrics } from "@/server/collections/revisions/collection";
 import { getNextVersionAfterSemver, htmlToChangeMetrics } from "@/server/editor/utils";
 import { dataToMarkdown } from "@/server/editor/conversionUtils";
@@ -52,8 +53,9 @@ import { verifySecondRenaissanceMigration } from "./verifySecondRenaissanceMigra
  *   public again;
  * - recomputes comment counts and per-user post and comment counts;
  * - marks migrated members as reviewed with starting karma, so they aren't
- *   treated as brand-new accounts, and marks migrated posts as reviewed
- *   (syncMemberTrust);
+ *   treated as brand-new accounts (syncMemberTrust);
+ * - marks migrated posts as reviewed and gives them the site's default voting
+ *   system, with reactions (syncPostDefaults);
  * - gives migrated posts and comments their author's self-upvote, and
  *   recalculates their scores (syncSelfVotes, recalculateScores);
  * - turns Discourse likes into upvotes by the same members, adding to the
@@ -666,13 +668,10 @@ async function syncProfileSlugs(tx: Transaction, source: SourceData, ids: IdMaps
  * account, so their posts and comments aren't held for approval, and give
  * them enough karma to lift the limits on new accounts (3 comments a day,
  * 2 posts a week below 5 karma). Never lowers karma or changes an existing
- * reviewer. Migrated posts are marked reviewed too, so they stay out of the
- * moderators' unreviewed-posts queue; they're already on the frontpage.
+ * reviewer.
  */
 async function syncMemberTrust(tx: Transaction, counts: ImportCounts): Promise<void> {
-  const adminAccountId = adminAccountSetting.get("LessWrong")?._id;
-  if (!adminAccountId) throw new Error("The adminAccount setting is required to mark migrated members as reviewed");
-  const users = await tx.result(`
+  const result = await tx.result(`
     -- importSecondRenaissanceDiscourse member trust
     UPDATE "Users" SET
       "reviewedByUserId" = COALESCE("reviewedByUserId", $(adminAccountId)),
@@ -680,14 +679,32 @@ async function syncMemberTrust(tx: Transaction, counts: ImportCounts): Promise<v
       karma = GREATEST(COALESCE(karma, 0), $(startingKarma))
     WHERE "legacyData" ? 'secondRenaissanceDiscourseUserId'
       AND ("reviewedByUserId" IS NULL OR COALESCE(karma, 0) < $(startingKarma))
-  `, { adminAccountId, startingKarma: MIGRATED_MEMBER_KARMA });
-  const posts = await tx.result(`
-    -- importSecondRenaissanceDiscourse post review
-    UPDATE "Posts" SET "reviewedByUserId" = $(adminAccountId)
-    WHERE "legacyData" ? 'secondRenaissanceDiscourseTopicId' AND "reviewedByUserId" IS NULL
-  `, { adminAccountId });
-  counts.usersUpdated += users.rowCount;
-  counts.postsUpdated += posts.rowCount;
+  `, { adminAccountId: getAdminAccountId(), startingKarma: MIGRATED_MEMBER_KARMA });
+  counts.usersUpdated += result.rowCount;
+}
+
+/**
+ * Gives migrated posts what the site sets on posts created through it: a
+ * reviewer, so they stay out of the moderators' unreviewed-posts queue (they're
+ * already on the frontpage), and the default voting system, so their comments
+ * get reactions (#84). Never changes an existing reviewer.
+ */
+async function syncPostDefaults(tx: Transaction, counts: ImportCounts): Promise<void> {
+  const result = await tx.result(`
+    -- importSecondRenaissanceDiscourse post defaults
+    UPDATE "Posts" SET
+      "reviewedByUserId" = COALESCE("reviewedByUserId", $(adminAccountId)),
+      "votingSystem" = $(votingSystem)
+    WHERE "legacyData" ? 'secondRenaissanceDiscourseTopicId'
+      AND ("reviewedByUserId" IS NULL OR "votingSystem" IS DISTINCT FROM $(votingSystem))
+  `, { adminAccountId: getAdminAccountId(), votingSystem: defaultVotingSystem });
+  counts.postsUpdated += result.rowCount;
+}
+
+function getAdminAccountId(): string {
+  const adminAccountId = adminAccountSetting.get("LessWrong")?._id;
+  if (!adminAccountId) throw new Error("The adminAccount setting is required to mark migrated content as reviewed");
+  return adminAccountId;
 }
 
 /**
@@ -805,6 +822,7 @@ async function runImport(tx: Transaction, source: SourceData, content: PublicCon
   await syncSocialPreviewImages(tx, counts);
   await syncComments(tx, content, existing.comments, ids, counts);
   await syncMemberTrust(tx, counts);
+  await syncPostDefaults(tx, counts);
   await syncSelfVotes(tx, counts);
   await syncLikeVotes(tx, source, content, ids, counts);
   await syncCounts(tx, counts);

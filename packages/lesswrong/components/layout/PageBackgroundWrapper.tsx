@@ -6,11 +6,12 @@ import { routeHasWhiteBackground, routeHasCreamBackground } from '@/lib/routeChe
 import { isClient } from '@/lib/executionEnvironment';
 import { brandThemeSetting } from '@/lib/instanceSettings';
 import { forumTypeSetting } from '@/lib/forumTypeUtils';
+import { defaultThemeOptions } from '@/themes/themeNames';
 import "./pageBackground.css";
 
 const themeSelectorScript = `
 (function _addThemeClass() {
-  let themeName="default";
+  let themeName=${JSON.stringify(defaultThemeOptions.name)};
   try {
     const getCookie = (name) => {
       const cookie = document.cookie.split(';').filter(c=>c.trim().startsWith(name+"="))[0];
@@ -19,14 +20,14 @@ const themeSelectorScript = `
       }
     }
     const themeOptions = getCookie("theme")
-    themeName = themeOptions ? JSON.parse(themeOptions).name : "default";
+    themeName = themeOptions ? JSON.parse(themeOptions).name : ${JSON.stringify(defaultThemeOptions.name)};
   } catch {
   }
   document.body.classList.add("theme-"+themeName);
 })()`;
 
 function getThemeClassnameFromCookie() {
-  let themeName="default";
+  let themeName: string = defaultThemeOptions.name;
   try {
     const getCookie = (name: string) => {
       const cookie = document.cookie.split(';').filter(c=>c.trim().startsWith(name+"="))[0];
@@ -35,7 +36,7 @@ function getThemeClassnameFromCookie() {
       }
     }
     const themeOptions = getCookie("theme")
-    themeName = themeOptions ? JSON.parse(themeOptions).name : "default";
+    themeName = themeOptions ? JSON.parse(themeOptions).name : defaultThemeOptions.name;
   } catch(e) {
     // eslint-disable-next-line no-console
     console.error(`Error seting theme from cookie: ${e}`);
