@@ -4,6 +4,8 @@ import { Link } from "../../lib/reactRouterWrapper";
 import CommentsNewForm from "../comments/CommentsNewForm";
 import { commentGetPageUrlFromIds } from "@/lib/collections/comments/helpers";
 import { postGetCommentsUrl } from "@/lib/collections/posts/helpers";
+import { useForumType } from "../hooks/useForumType";
+import { brandThemeSetting } from "@/lib/instanceSettings";
 
 const styles = defineStyles("UltraFeedReplyEditor", (theme: ThemeType) => ({
   replyEditorContainer: {
@@ -72,6 +74,9 @@ const UltraFeedReplyEditor = ({
   onReplyCancel,
 }: UltraFeedReplyEditorProps) => {
   const classes = useStyles(styles);
+  const { forumType } = useForumType();
+  // lesswrong.com/editor is LessWrong's own guide; other brands get the editor's default hint
+  const hintText = brandThemeSetting.get(forumType) ? undefined : "Text goes here! Visit lesswrong.com/editor for more info about the editor...";
 
   const post = collectionName === "Comments" ? document.post : document;
 
@@ -115,7 +120,7 @@ const UltraFeedReplyEditor = ({
             interactionType={collectionName === "Comments" ? "reply" : "comment"}
             enableGuidelines={false}
             formStyle="default"
-            overrideHintText="Text goes here! Visit lesswrong.com/editor for more info about the editor..."
+            overrideHintText={hintText}
           />
         </div>
       )}
