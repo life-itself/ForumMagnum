@@ -599,7 +599,9 @@ const LWHomePosts = ({ children, }: {
   const recentPostsTerms: PostsViewTerms = {
     filterSettings,
     after: dateCutoff,
-    view: "magic",
+    // Newest first: with the migrated posts' like karma, LessWrong's "magic"
+    // ranking put years-old posts above this week's
+    view: "new",
     forum: true,
     limit: defaultLimit
   };

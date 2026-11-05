@@ -82,7 +82,7 @@ const stage1LwSettings = merge({
       {
         name: "forum-classic",
         label: "Recent",
-        description: "Recent posts ordered with the classic frontpage algorithm.",
+        description: "The newest posts first.",
         showToLoggedOut: true,
       },
       {
