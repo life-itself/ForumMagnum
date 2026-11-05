@@ -158,7 +158,7 @@ const sourceLabels: Record<FeedItemSourceType, string> = {
   'bookmarks': 'you bookmarked this',
   'quicktakes': 'recent Quick Take',
   'recentComments': 'recent comments',
-  'spotlights': 'LessWrong featured item',
+  'spotlights': 'featured item',
 };
 
 const sourceTooltips: Partial<Record<FeedItemSourceType, string>> = {

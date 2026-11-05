@@ -21,6 +21,8 @@ import ForumIcon from '@/components/common/ForumIcon';
 import { userIsAdminOrMod } from '@/lib/vulcan-users/permissions';
 import TagFilterSettings from '@/components/tagging/TagFilterSettings';
 import { useFilterSettings } from '@/components/hooks/useFilterSettings';
+import { useForumType } from '@/components/hooks/useForumType';
+import { recombeeEnabledSetting, siteNameWithArticleSetting } from '@/lib/instanceSettings';
 
 const styles = defineStyles('UltraFeedSettingsComponents', (theme: ThemeType) => ({
   settingGroup: {
@@ -304,12 +306,17 @@ export const SourceWeightsSettings: React.FC<SourceWeightsSettingsProps> = ({
   defaultOpen = true,
 }) => {
   const classes = useStyles(styles);
+  const { forumType } = useForumType();
+  // The feed doesn't use the Recombee source when Recombee is off (see ultraFeedResolver)
+  const visibleSourceWeightConfigs = recombeeEnabledSetting.get(forumType)
+    ? sourceWeightConfigs
+    : sourceWeightConfigs.filter(config => config.key !== 'recombee-lesswrong-ultrafeed');
   return (
     <CollapsibleSettingGroup title="Source Weights" defaultOpen={defaultOpen} className={classes.settingGroup}>
       <p className={classes.groupDescription}>
         Adjust the relative frequency of different content types in your feed. Higher numbers mean more frequent items. Uses weighted sampling.
       </p>
-      {sourceWeightConfigs.map((config) => {
+      {visibleSourceWeightConfigs.map((config) => {
         const { key: sourceKey, label, description } = config;
         const currentValue = weights[sourceKey];
         const errorMessage = errors[sourceKey];
@@ -1133,6 +1140,7 @@ export interface MiscSettingsProps {
 export const MiscSettings: React.FC<MiscSettingsProps> = ({ formValues, onBooleanChange, onAlgorithmChange, defaultOpen = true, currentUser }) => {
   const classes = useStyles(styles);
   const isAdmin = userIsAdminOrMod(currentUser);
+  const { forumType } = useForumType();
   
   return (
     <CollapsibleSettingGroup title="Misc" defaultOpen={defaultOpen} className={classes.settingGroup}>
@@ -1149,7 +1157,7 @@ export const MiscSettings: React.FC<MiscSettingsProps> = ({ formValues, onBoolea
         </label>
       </div>
       <p className={classes.groupDescription}>
-        When enabled, the feed algorithm does not log viewing behavior (votes and comments will still influence it). This does not disable standard LessWrong analytics separate from the feed.
+        When enabled, the feed algorithm does not log viewing behavior (votes and comments will still influence it). This does not disable standard {siteNameWithArticleSetting.get(forumType)} analytics separate from the feed.
       </p>
 
       {isAdmin && (
