@@ -25,7 +25,7 @@ fi
 
 if [[ ! -x "node_modules/.bin/next" ]]; then
   echo "Project dependencies are required before starting the dev server."
-  echo "Run: yarn install"
+  echo "Run: npm install"
   exit 1
 fi
 

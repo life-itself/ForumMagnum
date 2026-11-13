@@ -17,7 +17,7 @@ import {
  * Reads a local `discourse_backup*` database (DISCOURSE_SOURCE_URL, localhost
  * only) and the app database. Neither is written to.
  *
- * Usage: yarn repl prod lw packages/lesswrong/scripts/verifySecondRenaissanceMigration.ts "verifySecondRenaissanceMigration()"
+ * Usage: npm run repl -- prod lw packages/lesswrong/scripts/verifySecondRenaissanceMigration.ts "verifySecondRenaissanceMigration()"
  */
 
 async function loadTarget(): Promise<TargetData> {

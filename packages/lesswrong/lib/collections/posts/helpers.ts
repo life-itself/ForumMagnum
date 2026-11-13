@@ -1,6 +1,6 @@
 import { aboutPostIdSetting, allowTypeIIIPlayerSetting, type ForumTypeString, siteUrlSetting, cloudinaryCloudName, crosspostKarmaThreshold, type3DateCutoffSetting, type3ExplicitlyAllowedPostIdsSetting, type3KarmaCutoffSetting } from '@/lib/instanceSettings';
 import { getSiteUrl } from '../../vulcan-lib/utils';
-import { userOwns, userCanDo, userOverNKarmaFunc, userIsAdmin } from '../../vulcan-users/permissions';
+import { userOwns, userCanDo, userOverNKarmaFunc, userIsAdmin, userIsMemberOf, type PermissionableUser } from '../../vulcan-users/permissions';
 import { userGetDisplayName, userIsSharedOn, type SharableDocument } from '../users/helpers';
 import { postStatuses, postStatusLabels } from './constants';
 import maxBy from "lodash/maxBy";
@@ -184,17 +184,6 @@ export const getSocialPreviewImage = (post: DbPost, forumType: ForumTypeString):
   return autoUrl || ''
 }
 
-export const getSocialPreviewSql = (tablePrefix: string, forumType: ForumTypeString) => `JSON_BUILD_OBJECT(
-  'imageUrl',
-  CASE
-    WHEN ${tablePrefix}."isEvent" AND ${tablePrefix}."eventImageId" IS NOT NULL
-      THEN '${getSocialImagePreviewPrefix(forumType)}' || ${tablePrefix}."eventImageId"
-    WHEN ${tablePrefix}."socialPreview"->>'imageId' IS NOT NULL
-      THEN '${getSocialImagePreviewPrefix(forumType)}' || (${tablePrefix}."socialPreview"->>'imageId')
-    ELSE COALESCE(${tablePrefix}."socialPreviewImageAutoUrl", '')
-  END
-)`;
-
 // The set of fields required for calling postGetPageUrl. Could be supplied by
 // either a fragment or a DbPost.
 export interface PostsMinimumForGetPageUrl {
@@ -373,6 +362,10 @@ export const canUserEditPostMetadataWithoutModeratorPowers = (currentUser: Users
 export const userCanEditPostSharingSettings = (currentUser: UsersCurrent|DbUser|null, post: HasUserIdType): boolean => {
   if (!currentUser) return false;
   return userOwns(currentUser, post) || userIsAdmin(currentUser);
+}
+
+export const userCanSuggestPostsForCuration = (user: PermissionableUser|DbUser|null): boolean => {
+  return userCanDo(user, 'posts.moderate.all') || userIsMemberOf(user, 'canSuggestCuration');
 }
 
 export const postCanDelete = (currentUser: UsersCurrent|null, post: PostsBase): boolean => {

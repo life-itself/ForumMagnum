@@ -34,7 +34,7 @@ fi
 
 if [[ ! -d ".next" ]]; then
   echo "A production build is required before starting."
-  echo "Run: yarn build-hosted-db"
+  echo "Run: npm run build-hosted-db"
   exit 1
 fi
 

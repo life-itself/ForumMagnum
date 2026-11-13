@@ -3,7 +3,7 @@
   "steps": {
     "install": {
       "commands": [
-        "yarn install --frozen-lockfile --ignore-scripts"
+        "npm ci --ignore-scripts"
       ]
     },
     "build": {
@@ -14,9 +14,9 @@
       ],
       "commands": [
         "npm rebuild bcrypt",
-        "cd ckEditor && yarn install --frozen-lockfile --ignore-scripts --ignore-optional && yarn build",
-        "cd excalidraw && yarn install --frozen-lockfile --production=false && yarn build",
-        "ENV_NAME=stage1Lw FORUM_TYPE=LessWrong PG_URL=\"$PG_URL_BUILD\" yarn generate",
+        "cd ckEditor && npm ci --ignore-scripts --omit=optional && npm run build",
+        "cd excalidraw && npm ci --include=dev && npm run build",
+        "ENV_NAME=stage1Lw FORUM_TYPE=LessWrong PG_URL=\"$PG_URL_BUILD\" npm run generate",
         "ENV_NAME=stage1Lw FORUM_TYPE=LessWrong PG_URL=\"$PG_URL_BUILD\" ./node_modules/.bin/next build"
       ]
     }

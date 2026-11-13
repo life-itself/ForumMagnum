@@ -74,7 +74,7 @@ import { verifySecondRenaissanceMigration } from "./verifySecondRenaissanceMigra
  * back, so the counts are exact, and nothing is uploaded. Pass `{ execute: true }` to commit. A target
  * database that isn't on localhost also needs `{ allowRemote: true }`.
  *
- * Usage: yarn repl prod lw packages/lesswrong/scripts/importSecondRenaissanceDiscourse.ts "importSecondRenaissanceDiscourse({ execute: true })"
+ * Usage: npm run repl -- prod lw packages/lesswrong/scripts/importSecondRenaissanceDiscourse.ts "importSecondRenaissanceDiscourse({ execute: true })"
  */
 
 const pgp = getPgPromiseLib();

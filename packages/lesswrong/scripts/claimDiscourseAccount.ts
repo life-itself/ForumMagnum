@@ -14,7 +14,7 @@ import { mergeAccounts } from "@/server/scripts/mergeAccounts";
  * Dry run by default; pass `execute: true` to merge. Run
  * verifySecondRenaissanceMigration afterwards.
  *
- * Usage: yarn repl prod lw packages/lesswrong/scripts/claimDiscourseAccount.ts "claimDiscourseAccount({ discourseUsername: 'RobertBunge', forumUsername: 'robert_bunge', execute: true })"
+ * Usage: npm run repl -- prod lw packages/lesswrong/scripts/claimDiscourseAccount.ts "claimDiscourseAccount({ discourseUsername: 'RobertBunge', forumUsername: 'robert_bunge', execute: true })"
  */
 
 interface AccountRow {

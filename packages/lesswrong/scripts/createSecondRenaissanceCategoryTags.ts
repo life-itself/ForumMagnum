@@ -22,7 +22,7 @@ import { getSourceUrl } from "./secondRenaissanceDiscourseSource";
  * existing tag-post links are skipped, and renamed categories rename their tag.
  * importSecondRenaissanceDiscourse runs this after each import.
  *
- * Usage: yarn repl prod lw packages/lesswrong/scripts/createSecondRenaissanceCategoryTags.ts "createSecondRenaissanceCategoryTags({ execute: true })"
+ * Usage: npm run repl -- prod lw packages/lesswrong/scripts/createSecondRenaissanceCategoryTags.ts "createSecondRenaissanceCategoryTags({ execute: true })"
  */
 
 interface MigratedPost {

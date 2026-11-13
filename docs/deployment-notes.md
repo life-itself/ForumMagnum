@@ -19,12 +19,12 @@
    - If you want a custom public config outside the built-in `ENV_NAME` profiles, you must add explicit code support for it first
 3. **Build & run**:
    ```bash
-   yarn install
-   yarn generate
-   yarn build --settings ./your-settings.json --production
-   yarn run production
+   npm install
+   npm run generate
+   npm run build -- --settings ./your-settings.json --production
+   npm run production
    ```
-4. **Run migrations**: use the repo's migration wrapper with environment and forum arguments, e.g. `yarn migrate up dev lw`
+4. **Run migrations**: use the repo's migration wrapper with environment and forum arguments, e.g. `npm run migrate -- up dev lw`
 5. **Set up cron jobs** — the app expects periodic hits to `/api/cron/every-minute`, `/api/cron/every-hour`, `/api/cron/every-midnight`, etc. (defined in `vercel.json`)
 
 ## Stage 1 Minimum Runtime
@@ -74,7 +74,7 @@ Before attempting stage 1 from a laptop, verify the local toolchain:
 Checks:
 
 ```bash
-yarn check-local-prereqs
+npm run check-local-prereqs
 ```
 
 Typical macOS install path:
@@ -104,7 +104,7 @@ Suggested flow:
    In our case, Railway exposed the correct external URL as `DATABASE_URL`.
 5. Validate local connectivity:
    ```bash
-   yarn check-hosted-db
+   npm run check-hosted-db
    ```
 
 What to record once this is working:
@@ -138,13 +138,13 @@ The first goal is not to automate the entire Railway project lifecycle. It is to
 Local prerequisite check:
 
 ```bash
-yarn check-local-prereqs
+npm run check-local-prereqs
 ```
 
 Hosted DB connectivity check:
 
 ```bash
-PG_URL='postgres://...' yarn check-hosted-db
+PG_URL='postgres://...' npm run check-hosted-db
 ```
 
 Hosted DB bootstrap:
@@ -152,12 +152,12 @@ Hosted DB bootstrap:
 ```bash
 PATH="/opt/homebrew/opt/libpq/bin:$PATH" \
 PG_URL='postgres://...' \
-yarn bootstrap-hosted-db
+npm run bootstrap-hosted-db
 ```
 
 Bootstrap behavior:
 
-- on a fresh DB, `yarn bootstrap-hosted-db` loads `schema/accepted_schema.sql`
+- on a fresh DB, `npm run bootstrap-hosted-db` loads `schema/accepted_schema.sql`
 - then it marks schema-backed migrations as executed using the repo's migration storage
 - on a non-fresh DB, it skips schema import and runs the normal migration wrapper with explicit local env injection
 
@@ -167,7 +167,7 @@ Observed first-run verification:
 
 - schema import succeeded against Railway `pgvector`
 - marking migrations as executed recorded the repo migration set without replaying historical transforms
-- a follow-up `yarn migrate up dev lw` with explicit env injection applied `0 migrations`
+- a follow-up `npm run migrate -- up dev lw` with explicit env injection applied `0 migrations`
 - the hosted DB had `0` rows in `Posts` after schema bootstrap, confirming that this path is schema-only and not a content seed
 
 Direct local startup against hosted DB:
@@ -177,7 +177,7 @@ PATH="/opt/homebrew/opt/libpq/bin:$PATH" \
 PG_URL='postgres://...' \
 ENV_NAME=stage1Lw \
 private_expressSessionSecret='replace-me' \
-yarn start-hosted-db-dev
+npm run start-hosted-db-dev
 ```
 
 Hosted build and production-style start against hosted DB:
@@ -187,20 +187,20 @@ PATH="/opt/homebrew/opt/libpq/bin:$PATH" \
 PG_URL='postgres://...' \
 ENV_NAME=stage1Lw \
 private_expressSessionSecret='replace-me' \
-yarn build-hosted-db
+npm run build-hosted-db
 
 PATH="/opt/homebrew/opt/libpq/bin:$PATH" \
 PG_URL='postgres://...' \
 ENV_NAME=stage1Lw \
 private_expressSessionSecret='replace-me' \
 PORT=8080 \
-yarn start-hosted-db
+npm run start-hosted-db
 ```
 
 Observed hosted-runtime dry run:
 
-- `yarn build-hosted-db` completed successfully against the Railway DB
-- `yarn start-hosted-db` booted the built app locally on port `8080`
+- `npm run build-hosted-db` completed successfully against the Railway DB
+- `npm run start-hosted-db` booted the built app locally on port `8080`
 - `/` responded with HTTP `200`
 - `/login` responded with HTTP `200`
 - `/graphql` responded to `currentUser` with `{"data":{"currentUser":null}}`
@@ -241,11 +241,11 @@ Live hosted smoke-check checkpoint:
 
 The working hosted build path is now:
 
-1. Railpack root install with `yarn install --frozen-lockfile --ignore-scripts`
+1. Railpack root install with `npm ci --ignore-scripts`
 2. `npm rebuild bcrypt`
-3. `cd ckEditor && yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
-4. `cd ckEditor && yarn build`
-5. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
+3. `cd ckEditor && npm ci --ignore-scripts --omit=optional`
+4. `cd ckEditor && npm run build`
+5. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong npm run generate`
 6. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong ./node_modules/.bin/next build`
 
 The important strategic conclusion is that Railway's Dockerfile path was the
@@ -266,8 +266,8 @@ Notes:
 Container/runtime alignment:
 
 - the Dockerfile now uses Node `24.13.0`
-- the Dockerfile builds with `yarn build-hosted-db`
-- the Dockerfile starts with `yarn start-hosted-db`
+- the Dockerfile builds with `npm run build-hosted-db`
+- the Dockerfile starts with `npm run start-hosted-db`
 - for Railway, the required service variables must be present before deploy because the build step consumes them
 
 ## Runtime Dependency Matrix
@@ -348,7 +348,7 @@ The codebase currently deploys to **Vercel** (primary) with a separate **Fly.io*
 ## Key Gotchas
 
 - The Dockerfile references a private `Credentials` repo decrypted via `transcrypt` — you'd replace that with your own settings mechanism.
-- `yarn generate` must be run after any schema/GraphQL changes before building.
+- `npm run generate` must be run after any schema/GraphQL changes before building.
 - The local runtime public config comes from code-backed `ENV_NAME` settings, not an arbitrary JSON file.
 - Railway's standard Postgres path is not the stage-1 target here; use the `pgvector` variant so extension support is not a surprise later.
 - Railway project duplication can waste limited free-plan quota and block setup; keep to one linked project.
