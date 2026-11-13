@@ -18,7 +18,7 @@ fi
 
 if [[ ! -x "node_modules/.bin/ts-node" ]]; then
   echo "Project dependencies are required before running migrations."
-  echo "Run: yarn install"
+  echo "Run: npm install"
   exit 1
 fi
 
@@ -41,7 +41,7 @@ if [[ "$(schema_is_loaded)" == "t" ]]; then
   else
     echo
     echo "Running repo migrations against existing hosted database..."
-    SKIP_VERCEL_CODE_PULL=true ENV_NAME=localLwDevDb FORUM_TYPE=LessWrong PG_URL="$PG_URL" yarn migrate up dev lw
+    SKIP_VERCEL_CODE_PULL=true ENV_NAME=localLwDevDb FORUM_TYPE=LessWrong PG_URL="$PG_URL" npm run migrate -- up dev lw
   fi
 else
   echo "Loading accepted schema into hosted database..."

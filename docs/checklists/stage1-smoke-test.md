@@ -8,7 +8,7 @@ PG_URL='postgres://...' \
 ENV_NAME=stage1Lw \
 FORUM_TYPE=LessWrong \
 private_expressSessionSecret='replace-me' \
-yarn start-hosted-db-dev
+npm run start-hosted-db-dev
 ```
 
 ## Checks
@@ -39,7 +39,7 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 | Check | Result | Notes |
 |------|--------|-------|
-| App boot | Pass | `yarn start-hosted-db-dev` starts Next.js against Railway DB |
+| App boot | Pass | `npm run start-hosted-db-dev` starts Next.js against Railway DB |
 | Homepage | Pass | `/` returned `200` and rendered "No posts to display." |
 | GraphQL | Pass | `currentUser` query returned `{"data":{"currentUser":null}}` |
 | Login route | Pass | `/login` returned `200` |

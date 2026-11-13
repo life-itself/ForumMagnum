@@ -1,5 +1,5 @@
 import React from "react";
-import { commentIsHiddenPendingReview, commentIsNotPublicForAnyReason } from "@/lib/collections/comments/helpers";
+import { commentIsHiddenPendingReview, commentIsNotPublicForAnyReason, commentIsTopLevelQuickTake } from "@/lib/collections/comments/helpers";
 import { REJECTED_COMMENT } from "@/lib/collections/moderatorActions/constants";
 import { tagGetAbsoluteDiscussionUrl } from "@/lib/collections/tags/helpers";
 import { userIsApproved, userShortformPostTitle } from "@/lib/collections/users/helpers";
@@ -41,6 +41,8 @@ import { EmailComment } from "../emailComponents/EmailComment";
 import { PostsRevision } from "@/lib/collections/posts/fragments";
 import { backgroundTask } from "../utils/backgroundTask";
 import { createAutomatedContentEvaluation } from "@/server/collections/automatedContentEvaluations/helpers";
+import { getQuickTakeAutoTagsToApply, getTagBotUserId } from "../languageModels/autoTagCallbacks";
+import { escapeHtml } from "@/lib/utils/sanitize";
 
 interface SendModerationPMParams {
   messageContents: string,
@@ -393,14 +395,14 @@ const utils = {
   
       let messageContents =
           `<div>
-            <p>One of your comments on "${contentTitle}" has been removed by ${(moderatingUser?.displayName) || "our automated spam detection"}. We've sent you another PM with the content. If this deletion seems wrong to you, please send us a message on Intercom (the icon in the bottom-right of the page); we will not see replies to this conversation.</p>
+            <p>One of your comments on "${escapeHtml(contentTitle ?? "")}" has been removed by ${escapeHtml(moderatingUser?.displayName || "our automated spam detection")}. We've sent you another PM with the content. If this deletion seems wrong to you, please send us a message on Intercom (the icon in the bottom-right of the page); we will not see replies to this conversation.</p>
             <p>The contents of your message are here:</p>
             <blockquote>
               ${comment.contents?.html}
             </blockquote>
           </div>`
       if (comment.deletedReason && moderatingUser) {
-        messageContents += ` They gave the following reason: "${comment.deletedReason}".`;
+        messageContents += ` They gave the following reason: "${escapeHtml(comment.deletedReason)}".`;
       }
   
       // Only email approved users who are not snoozed, to avoid drawing unapproved users back to the site.
@@ -428,13 +430,13 @@ const utils = {
       const tag = await loaders.Tags.load(comment.tagId)
       if (tag) {
         contentTitle = tag.name
-        rejectedContentLink = `<a href=${tagGetAbsoluteDiscussionUrl({slug: tag.slug}, context.forumType)}` + `?commentId=${comment._id}">comment on ${tag.name}</a>`
+        rejectedContentLink = `<a href="${tagGetAbsoluteDiscussionUrl({slug: tag.slug}, context.forumType)}?commentId=${comment._id}">comment on ${escapeHtml(tag.name)}</a>`
       }
     } else if (comment.postId) {
       const post = await loaders.Posts.load(comment.postId)
       if (post) {
         contentTitle = post.title
-        rejectedContentLink = `<a href="https://lesswrong.com/posts/${post._id}/${post.slug}?commentId=${comment._id}">comment on ${post.title}</a>`
+        rejectedContentLink = `<a href="https://lesswrong.com/posts/${post._id}/${post.slug}?commentId=${comment._id}">comment on ${escapeHtml(post.title)}</a>`
       }
     }
   
@@ -785,6 +787,24 @@ export async function commentsNewNotifications(comment: DbComment, context: Reso
 }
 
 export const sendNewCommentNotifications = utils.sendNewCommentNotifications;
+
+export async function applyQuickTakeAutoTags(comment: DbComment, context: ResolverContext): Promise<DbTag[]> {
+  if (!commentIsTopLevelQuickTake(comment) || comment.relevantTagIds.length > 0) {
+    return [];
+  }
+  if (!await getTagBotUserId(context)) {
+    return [];
+  }
+  const tags = await getQuickTakeAutoTagsToApply(comment, context);
+  if (tags.length) {
+    // Only fill in tags if the author hasn't set some while the classifier was running
+    await context.Comments.rawUpdateOne(
+      { _id: comment._id, relevantTagIds: { $size: 0 } },
+      { $set: { relevantTagIds: tags.map(tag => tag._id) } },
+    );
+  }
+  return tags;
+}
 
 /* UPDATE VALIDATE */
 

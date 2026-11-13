@@ -3,9 +3,9 @@
 Browser checks of the live Seeds of Renaissance forum (issue #37). They're separate from the upstream suite in `playwright/`, which runs against a local test database.
 
 ```
-yarn playwright install chromium   # once
-yarn smoke-test                    # against https://forum.seedsofrenaissance.org
-SMOKE_BASE_URL=http://localhost:3456 yarn smoke-test
+npx playwright install chromium   # once
+npm run smoke-test                    # against https://forum.seedsofrenaissance.org
+SMOKE_BASE_URL=http://localhost:3456 npm run smoke-test
 ```
 
 ## What they check
@@ -32,7 +32,7 @@ SMOKE_BASE_URL=http://localhost:3456 yarn smoke-test
    - publish.
 4. **Run with:**
    ```
-   SMOKE_USERNAME=smoketest SMOKE_PASSWORD=… SMOKE_TEST_POST_ID=<the test post's id> yarn smoke-test
+   SMOKE_USERNAME=smoketest SMOKE_PASSWORD=… SMOKE_TEST_POST_ID=<the test post's id> npm run smoke-test
    ```
 
 Without these variables, the account tests are skipped.

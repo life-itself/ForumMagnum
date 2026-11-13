@@ -30,7 +30,7 @@ fi
 
 if [[ ! -x "node_modules/.bin/next" ]]; then
   echo "Project dependencies are required before building."
-  echo "Run: yarn install"
+  echo "Run: npm install"
   exit 1
 fi
 
@@ -38,5 +38,5 @@ echo "Building ForumMagnum with hosted DB config"
 echo "  ENV_NAME=$ENV_NAME"
 echo "  FORUM_TYPE=$FORUM_TYPE"
 
-yarn generate
+npm run generate
 NODE_OPTIONS="${NODE_OPTIONS:---no-deprecation --max_old_space_size=2560}" ./node_modules/.bin/next build

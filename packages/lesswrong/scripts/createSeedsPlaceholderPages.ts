@@ -15,7 +15,7 @@ import { computeContextFromUser } from "@/server/vulcan-lib/apollo-server/contex
  * Dry run by default; pass `{ execute: true }` to write. Safe to re-run: a
  * page whose title already exists for the admin account is skipped.
  *
- * Usage: yarn repl prod lw packages/lesswrong/scripts/createSeedsPlaceholderPages.ts "createSeedsPlaceholderPages({ execute: true })"
+ * Usage: npm run repl -- prod lw packages/lesswrong/scripts/createSeedsPlaceholderPages.ts "createSeedsPlaceholderPages({ execute: true })"
  */
 
 const PAGE_TITLES = ["About", "FAQ", "Contact"];

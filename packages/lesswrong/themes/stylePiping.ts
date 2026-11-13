@@ -273,7 +273,9 @@ const llmContentBlockStyles = (theme: ThemeType) => ({
     fontFamily: '"cronos-pro", serif',
     fontSize: 19.1,
     fontWeight: 400,
-    opacity: 0.94,
+    '&:not(:only-child)': {
+      opacity: 0.94,
+    },
     '& h1, & h2, & h3, & h4, & h5, & h6': {
       fontFamily: 'inherit',
     },
@@ -364,6 +366,9 @@ const llmContentBlockStyles = (theme: ThemeType) => ({
       fontWeight: 300,
       letterSpacing: 2.1,
       opacity: 0.6,
+    },
+    '&[data-truncated] > .llm-content-block-content::after, &[data-truncated] > .llm-content-block-content > p:last-child::after': {
+      display: 'none !important',
     },
   },
 });
@@ -858,6 +863,7 @@ export const commentBodyStyles = (theme: ThemeType, dontIncludePointerEvents?: b
     // model label is taller than a comment line and displaces two lines.
     '&& .llm-content-block': {
       fontSize: 'inherit',
+      margin: 0,
     },
   }
   return commentBodyStyles;

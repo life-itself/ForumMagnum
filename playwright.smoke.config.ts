@@ -7,8 +7,8 @@ import { defineConfig, devices } from "@playwright/test";
  * SMOKE_USERNAME and SMOKE_PASSWORD are set) a few account flows that clean
  * up after themselves. See playwright-smoke/README.md.
  *
- * yarn smoke-test                                   # against forum.seedsofrenaissance.org
- * SMOKE_BASE_URL=http://localhost:3456 yarn smoke-test
+ * npm run smoke-test                                   # against forum.seedsofrenaissance.org
+ * SMOKE_BASE_URL=http://localhost:3456 npm run smoke-test
  */
 export default defineConfig({
   testDir: "./playwright-smoke",

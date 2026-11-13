@@ -45,9 +45,9 @@ What this validates:
 
 - Docker build context includes the files Railway needs
 - Docker build context does not include stale local artifacts like `.next/`
-- `yarn install` works in the image
-- `cd ckEditor && yarn build` works in the image
-- `yarn generate` works in the image
+- `npm install` works in the image
+- `cd ckEditor && npm run build` works in the image
+- `npm run generate` works in the image
 - the production-style Next build works in the image
 
 This CKEditor step matters because Railway should not depend on a prebuilt local

@@ -182,12 +182,12 @@ Use this loop for repeatable redeploys:
 
 At the moment, the intended Railway build order is:
 
-1. `yarn install`
-2. Railpack install step uses `yarn install --frozen-lockfile --ignore-scripts`
+1. `npm install`
+2. Railpack install step uses `npm ci --ignore-scripts`
 3. `npm rebuild bcrypt`
-4. `cd ckEditor && yarn install --frozen-lockfile --ignore-scripts --ignore-optional`
-5. `cd ckEditor && yarn build`
-6. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong yarn generate`
+4. `cd ckEditor && npm ci --ignore-scripts --omit=optional`
+5. `cd ckEditor && npm run build`
+6. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong npm run generate`
 7. `ENV_NAME=stage1Lw FORUM_TYPE=LessWrong next build`
 
 The hosted-build tuning currently also includes:

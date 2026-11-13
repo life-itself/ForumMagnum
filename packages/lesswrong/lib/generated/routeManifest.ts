@@ -1015,6 +1015,9 @@ export const routeTrie = {
     "library": {
       "hasPage": true
     },
+    "llmModels": {
+      "hasPage": true
+    },
     "llmReplies": {
       "hasPage": true
     },
@@ -1549,6 +1552,7 @@ export const routeTrie = {
     "item": "item",
     "leaderboard": "leaderboard",
     "library": "library",
+    "llmmodels": "llmModels",
     "llmreplies": "llmReplies",
     "llmruns": "llmRuns",
     "login": "login",
