@@ -371,6 +371,12 @@ export const hasGoogleDocImportSetting = new PublicInstanceSetting<boolean>('goo
 export const llmMentionsEnabledSetting = new PublicInstanceSetting<boolean>('llmMentions.enabled', false, "optional");
 
 export const recombeeEnabledSetting = new PublicInstanceSetting<boolean>('recombee.enabled', false, "optional");
+
+export const umamiScriptUrlSetting = new PublicInstanceSetting<string | null>('umami.scriptUrl', null, "optional");
+export const umamiWebsiteIdSetting = new PublicInstanceSetting<string | null>('umami.websiteId', null, "optional");
+// Comma-separated hostnames Umami tracks, so local and preview builds don't count page views
+export const umamiDomainsSetting = new PublicInstanceSetting<string | null>('umami.domains', null, "optional");
+
 export const recommendationsTabManuallyStickiedPostIdsSetting = new PublicInstanceSetting<string[]>('recommendationsTab.manuallyStickiedPostIds', [], "optional");
 
 export const blackBarTitle = new PublicInstanceSetting<string | null>('blackBarTitle', null, "optional");

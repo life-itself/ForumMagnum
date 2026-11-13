@@ -77,6 +77,12 @@ const stage1LwSettings = merge({
     databaseId: null,
     publicApiToken: null,
   },
+  // Life Itself's Umami instance (#70)
+  umami: {
+    scriptUrl: "https://umami.lifeitself.org/script.js",
+    websiteId: "976b43e4-fd33-4c3b-a9d5-9b4b60c98915",
+    domains: "forum.seedsofrenaissance.org",
+  },
   homepagePosts: {
     feeds: [
       {
