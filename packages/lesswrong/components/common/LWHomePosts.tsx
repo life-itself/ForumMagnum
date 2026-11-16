@@ -661,9 +661,7 @@ const LWHomePosts = ({ children, }: {
   const recentPostsTerms: PostsViewTerms = {
     filterSettings,
     after: dateCutoff,
-    // Newest first: with the migrated posts' like karma, LessWrong's "magic"
-    // ranking put years-old posts above this week's
-    view: "new",
+    view: "magic",
     forum: true,
     limit: defaultLimit
   };
@@ -709,8 +707,10 @@ const LWHomePosts = ({ children, }: {
                   <HideRepeatedPostsProvider>
                     <WelcomePostItem repeatedPostsPrecedence={1} />
                     <CuratedPostsList overrideLimit={2} repeatedPostsPrecedence={2}/>
+                    {/* Newest first: with the migrated posts' like karma, LessWrong's "magic"
+                        ranking put years-old posts above this week's */}
                     <PostsList2
-                      terms={{...recentPostsTerms, algoActivityFactor}}
+                      terms={{...recentPostsTerms, view: "new"}}
                       alwaysShowLoadMore
                       animateLoadMore
                       hideHiddenFrontPagePosts
