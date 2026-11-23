@@ -1,4 +1,4 @@
-import type { CheerioAPI } from "cheerio";
+import type { Cheerio, CheerioAPI, Element, Node } from "cheerio";
 import { cheerioParse } from "@/server/utils/htmlUtil";
 import { sanitize } from "@/lib/utils/sanitize";
 import { emojiForDiscourseName } from "./secondRenaissanceDiscourseEmoji";
@@ -73,17 +73,68 @@ function replaceOneboxes($: CheerioAPI): void {
   });
   $("div.lazy-video-container").each((_, video) => {
     const box = $(video);
-    const videoId = box.attr("data-video-id");
-    const href = box.attr("data-provider-name") === "youtube" && videoId
-      ? `https://www.youtube.com/watch?v=${videoId}`
+    const youtubeId = getYoutubeVideoId(box);
+    const href = youtubeId
+      ? youtubeWatchUrl(youtubeId)
       : box.find("a[href]").first().attr("href");
     const title = box.attr("data-video-title") || href;
     if (!href) {
       box.remove();
       return;
     }
-    box.replaceWith($("<p>").append($("<a>").attr("href", href).text(title ?? href)));
+    const link = $("<p>").append($("<a>").attr("href", href).text(title ?? href));
+    box.replaceWith(link);
+    if (youtubeId) link.after(makeYoutubeEmbed($, youtubeId));
   });
+}
+
+const YOUTUBE_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
+
+function getYoutubeVideoId(video: Cheerio<Element>): string | null {
+  const videoId = video.attr("data-video-id");
+  return video.attr("data-provider-name") === "youtube" && videoId && YOUTUBE_VIDEO_ID.test(videoId) ? videoId : null;
+}
+
+function youtubeWatchUrl(videoId: string): string {
+  return `https://www.youtube.com/watch?v=${videoId}`;
+}
+
+function youtubeEmbedUrl(videoId: string): string {
+  return `https://www.youtube.com/embed/${videoId}`;
+}
+
+/** The media embed the forum's editor makes for a YouTube link */
+function makeYoutubeEmbed($: CheerioAPI, videoId: string): Cheerio<Node> {
+  const iframe = $("<iframe>")
+    .attr("src", youtubeEmbedUrl(videoId))
+    .attr("allow", "autoplay; encrypted-media")
+    .attr("allowfullscreen", "");
+  const embed = $("<div>").attr("data-oembed-url", youtubeWatchUrl(videoId)).append($("<div>").append(iframe));
+  return $("<figure>").addClass("media").append(embed);
+}
+
+/** IDs of the YouTube videos Discourse showed as playable videos in a post */
+export function getDiscourseYoutubeVideoIds(cooked: string): string[] {
+  const $ = cheerioParse(cooked);
+  return $("div.lazy-video-container").toArray()
+    .map(video => getYoutubeVideoId($(video)))
+    .filter((videoId): videoId is string => !!videoId);
+}
+
+/**
+ * Adds the embed below each of these videos' title links, in forum HTML
+ * imported before videos were embedded. A video already embedded (such as
+ * one fixed by hand) is left alone.
+ */
+export function addYoutubeEmbedsToHtml(html: string, videoIds: string[]): string {
+  const $ = cheerioParse(html);
+  for (const videoId of videoIds) {
+    if ($(`iframe[src="${youtubeEmbedUrl(videoId)}"]`).length) continue;
+    const link = $(`p > a[href="${youtubeWatchUrl(videoId)}"]`).first();
+    if (!link.length) throw new Error(`No title link for YouTube video ${videoId}`);
+    link.parent().after(makeYoutubeEmbed($, videoId));
+  }
+  return $.html();
 }
 
 /** A quote box becomes a blockquote starting with "Name:", without the avatar */
