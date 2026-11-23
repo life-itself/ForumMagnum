@@ -61,9 +61,9 @@ describe('cleanDiscourseHtml', () => {
     </aside>`)).toBe('<p><a href="https://www.memenomics.com/second-sapiens">Second Sapiens</a></p>');
   });
 
-  it('replaces a YouTube embed with a link', () => {
-    expect(clean('<div class="lazy-video-container" data-video-id="abc123" data-video-title="A talk" data-provider-name="youtube"><a href="https://www.youtube.com/watch?v=abc123"><img src="x.jpg"></a></div>'))
-      .toBe('<p><a href="https://www.youtube.com/watch?v=abc123">A talk</a></p>');
+  it('replaces a YouTube video with its title link and an embed', () => {
+    expect(clean('<div class="lazy-video-container" data-video-id="abc123def45" data-video-title="A talk" data-provider-name="youtube"><a href="https://www.youtube.com/watch?v=abc123def45"><img src="x.jpg"></a></div>'))
+      .toBe('<p><a href="https://www.youtube.com/watch?v=abc123def45">A talk</a></p><figure class="media"><div data-oembed-url="https://www.youtube.com/watch?v=abc123def45"><div><iframe src="https://www.youtube.com/embed/abc123def45" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div></figure>');
   });
 
   it('replaces a quote box with a blockquote naming the author', () => {
